@@ -1,0 +1,124 @@
+- query: Avocados
+  search_url: https://www.walmart.com/search?q=fresh+avocados
+- query: Bananas
+  search_url: https://www.walmart.com/search?q=Bananas
+- query: Berries
+  search_url: https://www.walmart.com/search?q=fresh+berries
+- query: Block or shredded cheese
+  search_url: https://www.walmart.com/search?q=block+or+shredded+cheeese
+- query: Broccoli produce
+  search_url: https://www.walmart.com/search?q=+Broccoli+produce
+- query: Broth
+  search_url: https://www.walmart.com/search?q=Broth
+- query: Brown rice
+  search_url: https://www.walmart.com/search?q=brown+rice
+- query: Butter or Margarine
+  search_url: https://www.walmart.com/browse/food/butter-margarine/976759_9176907_1001467
+- query: Canned beans
+  search_url: https://www.walmart.com/search?q=canned+beans
+- query: Canned corn
+  search_url: https://www.walmart.com/search?q=Canned+corn
+- query: Canned green beans
+  search_url: https://www.walmart.com/search?q=Canned+green+beans
+- query: Canned salmon
+  search_url: https://www.walmart.com/search?q=Canned+salmon
+- query: Canned soup
+  search_url: https://www.walmart.com/search?q=Canned+soup
+- query: Canned tuna
+  search_url: https://www.walmart.com/search?q=Canned+tuna
+- query: Cereal
+  search_url: https://www.walmart.com/search?q=Cereal
+- query: Chicken breast or thighs
+  search_url: https://www.walmart.com/search?q=Chicken+breast+or+thighs
+- query: Chips
+  search_url: https://www.walmart.com/search?q=Chips
+- query: Cookies
+  search_url: https://www.walmart.com/search?q=cookies
+- query: Crackers
+  search_url: https://www.walmart.com/search?q=Crackers
+- query: Dish soap
+  search_url: https://www.walmart.com/search?q=Dish+soap
+- query: Dried beans
+  search_url: https://www.walmart.com/search?q=dried+beans
+- query: Eggs
+  search_url: https://www.walmart.com/search?q=Eggs
+- query: Flour
+  search_url: https://www.walmart.com/browse/food/flour/976759_976780_9959366_9084673_5437641
+- query: Frozen vegetables
+  search_url: https://www.walmart.com/search?q=Frozen+vegetables
+- query: Fruit snacks
+  search_url: https://www.walmart.com/search?q=Fruit+snacks
+- query: Garlic powder
+  search_url: https://www.walmart.com/search?q=Garlic+powder
+- query: Granola bars
+  search_url: https://www.walmart.com/search?q=Granola+bars
+- query: Ground beef
+  search_url: https://www.walmart.com/search?q=Ground+beef
+- query: Ground turkey
+  search_url: https://www.walmart.com/search?q=Ground+turkey
+- query: Hamburger buns
+  search_url: https://www.walmart.com/search?q=hamburger+buns
+- query: Juice
+  search_url: https://www.walmart.com/search?q=Juice
+- query: Ketchup
+  search_url: https://www.walmart.com/browse/food/shop-all-ketchup/976759_976794_7981173_6393141_6373470
+- query: Laundry detergent
+  search_url: https://www.walmart.com/search?q=Laundry+detergent
+- query: Lettuce produce
+  search_url: https://www.walmart.com/search?q=Lettuce+produce
+- query: Mayonnaise
+  search_url: https://www.walmart.com/browse/food/shop-all-mayonnaise/976759_976794_7981173_6451278_6720636
+- query: Milk
+  search_url: https://www.walmart.com/browse/food/milk/976759_9176907_4405816
+- query: Mustard
+  search_url: https://www.walmart.com/browse/food/shop-all-mustard/976759_976794_7981173_3083319_1393895
+- query: Oatmeal
+  search_url: https://www.walmart.com/search?q=Oatmeal
+- query: Oranges
+  search_url: https://www.walmart.com/browse/food/oranges/976759_976793_9756351_4914029_7718942
+- query: Peanut butter
+  search_url: https://www.walmart.com/search?q=Peanut+butter
+- query: Pepper
+  search_url: https://www.walmart.com/browse/food/black-pepper/976759_976794_3029941_3576286_8419626
+- query: Potatoes
+  search_url: https://www.walmart.com/search?q=potatoes&facet=global_product_type%3APotatoes
+- query: Produce Carrots
+  search_url: https://www.walmart.com/search?q=produce+carrots
+- query: Rollbacks - Baby
+  search_url: https://www.walmart.com/shop/deals/essentials/rollbacks/baby?povid=Essentials_rollbacks_nup_baby
+- query: Rollbacks - Beauty
+  search_url: https://www.walmart.com/shop/deals/essentials/rollbacks/beauty?povid=Essentials_rollbacks_nup_beauty
+- query: Rollbacks - Food
+  search_url: https://www.walmart.com/shop/deals/food/rollbacks?facet=special_offers%3ARollback
+- query: Rollbacks - Health & Wellness
+  search_url: https://www.walmart.com/shop/deals/essentials/rollbacks/health-and-wellness?povid=Essentials_rollbacks_nup_health
+- query: Rollbacks - Household Essentials
+  search_url: https://www.walmart.com/shop/deals/essentials/rollbacks/household-essentials?povid=Essentials_rollbacks_nup_householdessentials
+- query: Rollbacks - Personal Care
+  search_url: https://www.walmart.com/shop/deals/essentials/rollbacks/personal-care?povid=Essentials_rollbacks_nup_personalcare
+- query: Rollbacks - Pets
+  search_url: https://www.walmart.com/shop/deals/essentials/rollbacks/pets?povid=Essentials_rollbacks_nup_pets
+- query: Salt
+  search_url: https://www.walmart.com/browse/food/shop-all-salt/976759_976794_3029941_5999535_1878334
+- query: Sandwich bread
+  search_url: https://www.walmart.com/search?q=sandwich+bread
+- query: Soda
+  search_url: https://www.walmart.com/search?q=Soda
+- query: Spaghetti pasta
+  search_url: https://www.walmart.com/search?q=spaghetti+pasta
+- query: Spices and seasonings
+  search_url: https://www.walmart.com/search?q=spices+and+seasonings
+- query: Toilet paper
+  search_url: https://www.walmart.com/search?q=Toilet+paper
+- query: Tomatoes
+  search_url: https://www.walmart.com/browse/food/tomatoes/976759_976793_8910423_1819145?povid=search_tomato_nup_fresh-tomatoes
+- query: Tortillas
+  search_url: https://www.walmart.com/browse/food/tortillas/976759_976779_2993335
+- query: Vegetable oil or olive oil
+  search_url: https://www.walmart.com/search?q=vegetable+oil+or+olive+oil
+- query: White rice
+  search_url: https://www.walmart.com/search?q=white+rice
+- query: White sugar
+  search_url: https://www.walmart.com/search?q=white+sugar+or+brown+sugar
+- query: Yogurt (large tub or individual cups)
+  search_url: https://www.walmart.com/search?q=Yogurt+(large+tub+or+individual+cups)

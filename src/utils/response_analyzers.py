@@ -1,0 +1,33 @@
+
+async def walmart_response_analyzer(response, url, headers, logger, store_identification, check_store_identification: bool = True):
+    text = await response.text()
+
+    """Checks Walmart's response for bot detection, browser rejection, and store ID validation"""
+    blocked = "Robot or human" in text
+    browser_rejected = f"Sorry, Walmart site doesn't work with your browser." in text
+    store_id_found = f'"storeId":"{store_identification['store_id']}"' in text
+
+    if blocked:
+        logger.error(f"❌ Walmart detected bot activity and blocked the request.")
+        raise ValueError(f"Walmart detected bot activity and blocked the request for url: {url}.")
+        # return {"success": False, "reason": "Bot detected"}
+    else:
+        logger.info(f"✅ Not blocked by Walmart. Continuing with scraping...")
+
+    if browser_rejected:
+        logger.warning(f"⚠️ Walmart rejected the browser User-Agent.")
+        raise ValueError(f"Walmart rejected the browser User-Agent for url: {url}.")
+        # return {"success": False, "reason": "User-Agent rejected"}
+    else:
+        logger.info(f"✅ Browser User-Agent accepted by Walmart. Continuing with scraping...")
+
+    if check_store_identification:
+        if store_id_found:
+            logger.info(f"✅ Store ID {store_identification['store_id']} found in response.")
+        else:
+            logger.warning(f"⚠️ Store ID {store_identification['store_id']} not found in response.")
+            raise ValueError(f"Store ID {store_identification['store_id']} not found in response for url: {url}.")
+            # return {"success": False, "reason": "Store ID not found in response."}
+
+    logger.info("🟢 Scraping successful. Response passed all checks.")
+    return True

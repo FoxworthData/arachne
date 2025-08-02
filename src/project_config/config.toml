@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arachne"
+version = "0.1.0"
+description = "A web scraper to collect retail product pricing data."
+authors = [{ name = "dalesmith", email = "smith.dale@heb.com" }]
+dependencies = []
+
+[default]
+log_directory = "$LOG_DIRECTORY"
+sensitivity = "INFO"
+sensitive_keys = ["api_key", "password", "secret", "token"]
+file_storage = "file"
+save_location = "$SAVE_LOCATION"
+parsed_save_location = "$PARSED_SAVE_LOCATION"
+
+[development]
+log_directory = "$LOG_DIRECTORY"
+sensitivity = "DEBUG"
+file_storage = "file"
+save_location = "$SAVE_LOCATION"
+parsed_save_location = "$PARSED_SAVE_LOCATION"
+
+[production]
+log_directory = "logs/production"
+sensitivity = "ERROR"
+file_storage = "gcs"
+save_location = "gs://my-bucket-name/forager-logs"
+
+[brightdata]
+datacenter_proxy_host = "brd.superproxy.io"
+datacenter_proxy_port = 33335
+residential_proxy_host = "brd.superproxy.io"
+residential_proxy_port = 33335
+cert_path = "BrightData SSL certificate (port 33335).crt"
+customer_balance_url = "https://api.brightdata.com/customer/balance"
+
+[fetcher]
+batch_size = 5
+delay_min_seconds = 1.5
+delay_max_seconds = 3.0
+
+[scraper]
+# ✅ REVISED: Define a default engine to use for any retailer not specified below.
+default_engine = "aiohttp"
+
+[scraper.strategies]
+"Walmart" = "aiohttp"

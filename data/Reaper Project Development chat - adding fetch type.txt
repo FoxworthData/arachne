@@ -1,0 +1,2765 @@
+
+You and I have been working on my reaper project in Claude Code.
+
+Edit
+
+Pondering lack of memory about reaper project
+3s
+
+
+
+I don't have memory of our previous conversations, but I can help you continue working on your reaper project! Let me search for information about what we've been building together.
+
+
+Searched project for “reaper project Claude Code”
+2 results
+
+
+
+
+
+Mapped out sophisticated retail intelligence scraping platform architecture.
+6s
+
+
+
+
+
+Based on the project knowledge, I can see we've been working on the Reaper retail intelligence platform together! This is an impressive system with some really sophisticated architecture:
+
+Current Status: ✅ Production-ready with component-based architecture fully integrated and zero failing tests
+
+Key Accomplishments:
+
+Component Architecture with O(1) retailer-specific optimization
+Event-driven microservices using Google Cloud Pub/Sub
+Cookie seeding system for bot detection evasion with LRU cache
+URL-specific retry system achieving 95.9%-98.6% efficiency improvement
+Multi-retailer support (Walmart, Amazon ready for expansion)
+Comprehensive testing with 1438 tests passing, 0 failed
+The system is currently on the master branch and production-ready with forager/thresher scraping engines, advanced proxy management, and sophisticated anti-bot detection capabilities.
+
+What would you like to work on next? Are you looking to:
+
+Add support for new retailers?
+Enhance existing functionality?
+Work on monitoring/observability?
+Optimize performance further?
+Something else entirely?
+I'm ready to dive into the codebase and help continue building this platform!
+
+
+
+
+Retry
+I don't want to make any changes to any code yet, but I do want to talk about adding a new fetch type for the forager engine in reaper
+
+Edit
+
+Thinking about potential new fetch type for forager engine in Reaper
+2s
+
+
+
+
+Searched project for “forager engine fetch types current implementation”
+5 results
+
+
+
+
+
+
+
+
+
+Now I have a good understanding of the current forager engine and fetch types.
+1s
+
+
+
+Searched project for “fetch types search search-retry supported fetcher implementations”
+5 results
+
+
+
+
+
+
+
+
+
+Great! Now I have a clear understanding of the current fetch types and architecture.
+1s
+
+
+
+Searched project for “component architecture fetcher creation walmart forager component fetch types”
+5 results
+
+
+
+
+
+
+
+
+
+Now I have a comprehensive understanding of the current fetch types and architecture.
+1s
+
+
+
+Searched project for “fetch_type validation supported fetch types search search-retry implementation”
+6 results
+
+
+
+
+
+
+
+
+
+
+Analyzed Reaper's fetch types and component architecture comprehensively.
+9s
+
+
+
+Perfect! Now I have a comprehensive understanding of the current Reaper system and its fetch types. Let me break down what's currently implemented and then we can discuss adding a new fetch type.
+
+Current Fetch Types
+The system currently supports two primary fetch types:
+
+search - Full search operations that:
+Fetch all pages for a given search query
+Include cookie seeding for bot detection evasion
+Use pagination to crawl through search results
+Store results for parsing by the thresher engine
+search-retry - Retry operations that:
+Process only specific failed URLs (95.9%-98.6% efficiency improvement)
+Skip cookie seeding (performance optimization)
+Use URL-specific retry rather than full job retry
+Maintain retry sequence tracking
+Architecture Context
+The fetch types are implemented through the Component Architecture system:
+
+WalmartForagerComponent declares supported_fetch_types: ["search", "search-retry"]
+O(1) component selection via ComponentRegistry
+Fetcher classes: WalmartSearchFetcher and WalmartSearchRetryFetcher
+Event-driven execution through Google Cloud Pub/Sub
+Discussion: New Fetch Type
+What kind of new fetch type are you thinking about adding? Some possibilities that come to mind:
+
+product - Individual product page fetching (vs search results)
+category - Category browsing/crawling
+inventory - Stock/availability checking
+price - Price monitoring focused fetching
+review - Customer review extraction
+store-locator - Store information fetching
+Something else entirely?
+A few questions to help guide the discussion:
+
+What data would this new fetch type be targeting?
+How would it differ from the current search-based approach?
+Would it need cookie seeding, or is it more like a lightweight operation?
+Would it use pagination or be more of a single-page operation?
+Which retailers would you want to support initially?
+Understanding the use case will help us think through the implementation approach and how it would fit into the existing component architecture!
+
+
+
+
+Retry
+I need to add the ability to fetch store information for Walmart.  I attached some PoC code from a prior "forager" python project to the Reaper upgrades project for reference.  Walmart organizes its store locator for US stores by state.  Here's the top-level store locator page URL for Texas Walmart stores:  https://www.walmart.com/store-directory/tx
+
+Edit
+
+Mapping Walmart store locator strategy for state-level fetching
+2s
+
+
+
+
+Searched project for “store locator walmart PoC code forager state store directory”
+6 results
+
+
+
+
+
+
+
+
+
+Parsing Walmart store directory code for state-level information
+5s
+
+
+
+
+
+
+Searched project for “store directory state city URL walmart store locator fetch type”
+6 results
+
+
+
+
+
+
+
+
+
+Mapped Walmart store directory parsing strategy for Reaper system.
+9s
+
+
+
+
+
+
+Perfect! I can see from your PoC code that you've already done great work mapping out Walmart's store directory structure. Based on the attached code, I can see you have:
+
+Current PoC Architecture
+Two-Level Hierarchy:
+
+State Level: https://www.walmart.com/store-directory/tx → Lists cities within Texas
+City Level: https://www.walmart.com/store-directory/tx/austin → Lists individual stores in Austin
+Data Extraction Pattern:
+
+Extract JSON from __NEXT_DATA__ script tag
+Parse store information with timezone enrichment
+Build YAML files for persistence
+Integration into Reaper's Component Architecture
+Here's how I'd recommend integrating this as a new fetch type:
+
+1. New Fetch Type: store-directory
+Component Registration Update:
+
+python
+# In backend/components/walmart/__init__.py
+metadata={
+    "supported_fetch_types": ["search", "search-retry", "store-directory"],
+    # ... other metadata
+}
+2. Forager Component Integration
+WalmartForagerComponent Enhancement:
+
+python
+# In WalmartForagerComponent.create_fetcher()
+elif fetch_type.lower() == "store-directory":
+    return WalmartStoreDirectoryFetcher(
+        store_identification=kwargs.get('store_identification'),
+        fetch_query=kwargs.get('fetch_query'),  # State code (e.g., 'tx')
+        start_url=kwargs.get('start_url'),
+        project_config=self.project_config,
+        logger=self.logger,
+        **kwargs
+    )
+3. Store Directory Fetcher Implementation
+Two-Phase Approach:
+
+python
+class WalmartStoreDirectoryFetcher(RetailerFetcher):
+    """
+    Fetches Walmart store directory data for a given state.
+    
+    Phase 1: Fetch state-level directory page
+    Phase 2: Fetch city-level pages for individual stores
+    """
+    
+    async def fetch_all(self, start_url):
+        # Phase 1: Get state directory (list of cities)
+        cities = await self._fetch_state_directory(start_url)
+        
+        # Phase 2: Fetch each city's stores
+        for city in cities:
+            city_url = city['url']
+            await self._fetch_city_stores(city_url, city['city'])
+    
+    async def _fetch_state_directory(self, state_url):
+        # Extract cities from state page
+        pass
+    
+    async def _fetch_city_stores(self, city_url, city_name):
+        # Extract individual store data
+        pass
+4. Request Flow Integration
+Dispatcher Integration:
+
+python
+# Example dispatch request
+{
+    "request_id": "store_dir_tx_001",
+    "retailer": "Walmart",
+    "fetch_type": "store-directory",
+    "fetch_query": "tx",  # State code
+    "start_url": "https://www.walmart.com/store-directory/tx",
+    "job_type": "store-directory"
+}
+5. Thresher Integration
+Store Directory Parser:
+
+python
+class WalmartStoreDirectoryParser(ParserStrategy):
+    """
+    Parses store directory HTML files into structured store data.
+    """
+    
+    def parse_html(self, html_content, file_record):
+        # Extract __NEXT_DATA__ and process stores
+        # Return structured store data
+        pass
+Key Design Decisions
+Should Store Directory Need Cookie Seeding?
+Recommendation: Probably not needed for store directory pages
+Rationale: Store locator pages are typically public-facing and less bot-protected
+Implementation: Skip cookie seeding for store-directory fetch type
+Pagination Strategy
+State Level: Single page per state (no pagination)
+City Level: Single page per city (no pagination)
+Implementation: Custom paginator that handles the two-level hierarchy
+Data Storage
+Fetched Files: Store HTML for both state and city pages
+Parsed Data: Store information in database tables
+File Naming: Walmart_store-directory_TX_state_page_1_timestamp.html.gz
+Questions for Implementation
+Scope: Do you want to fetch all 50 states, or start with specific states?
+Frequency: How often should store directory data be updated?
+Data Model: Should stores be stored in the existing database schema or new tables?
+Error Handling: How should we handle cities/stores that fail to fetch?
+Rate Limiting: Should we add delays between city fetches to be respectful?
+The architecture looks very clean and would integrate well with the existing component system. The main work would be:
+
+Creating the WalmartStoreDirectoryFetcher class
+Implementing the two-phase fetch logic
+Adding the store directory parser to the thresher
+Updating component registration
+Would you like me to elaborate on any of these aspects or discuss the implementation approach further?
+
+
+
+
+Retry
+Here's the URL for the Walmart store directory for Austin, TX Walmart stores: https://www.walmart.com/store-directory/tx/austin
+
+Edit
+
+Investigating Walmart store directory URL structure
+3s
+
+
+
+
+
+Searched project for “austin tx walmart store directory city level URL structure”
+6 results
+
+
+
+
+
+
+
+
+
+
+Decoded Walmart store directory data extraction strategy.
+10s
+
+
+
+
+
+
+
+Perfect! That Austin URL is exactly what I was referring to as the "city-level" URL in the two-level hierarchy. Based on your PoC code, I can see this URL structure clearly now:
+
+URL Structure Analysis
+Two-Level Hierarchy:
+
+State Level: https://www.walmart.com/store-directory/tx
+Lists cities: "Austin (7)", "Dallas (15)", "Houston (23)", etc.
+Contains city count in parentheses
+City Level: https://www.walmart.com/store-directory/tx/austin
+Contains actual store data for all Austin Walmart locations
+Rich store information in __NEXT_DATA__ JSON
+Data Extraction Pattern from Your PoC
+From your WalmartStoreDirectoryByStateParser, I can see the city-level pages contain:
+
+python
+# Store data location in JSON
+stores_data = next_data_json['props']['pageProps']['initialData']['initialDataNearbyNodes']['data']['nearByNodes']['nodes']
+Rich Store Data Available:
+
+store_id, store_address, store_city, store_state, store_zip_code
+store_latitude, store_longitude (GPS coordinates)
+store_time_zone (enriched via TimezoneFinder)
+store_services (pharmacy, auto center, etc.)
+store_capabilities (pickup, delivery, etc.)
+store_operational_hours, store_is_open_24h
+store_is_glass_eligible, store_display_name
+Integration Strategy for Reaper
+Fetch Type: store-directory
+Based on your PoC, I'd recommend this approach:
+
+python
+# Example dispatch request
+{
+    "request_id": "store_dir_tx_austin_001",
+    "retailer": "Walmart", 
+    "fetch_type": "store-directory",
+    "fetch_query": "tx/austin",  # State/city path
+    "start_url": "https://www.walmart.com/store-directory/tx/austin",
+    "job_type": "store-directory"
+}
+Implementation Components
+WalmartStoreDirectoryFetcher (single city fetcher)
+Fetches one city's store data
+Handles the __NEXT_DATA__ extraction
+No pagination needed (single page per city)
+WalmartStoreDirectoryParser (thresher integration)
+Parses store data from HTML
+Enriches with timezone data
+Structured output for database storage
+Batch Processing Logic (dispatcher level)
+First fetch state-level page to get city list
+Generate individual city fetch requests
+Process all cities in a state systematically
+Key Design Questions
+Fetch Granularity: Should each city be a separate fetch request, or batch multiple cities?
+Recommendation: Separate requests per city for better error handling and retry logic
+Data Storage: Where should the parsed store data go?
+Option A: New walmart_stores table in existing database
+Option B: Continue with YAML files as in your PoC
+Option C: Both (database + YAML backup)
+Update Strategy: How often should store data be refreshed?
+Recommendation: Monthly or quarterly updates (stores don't change frequently)
+Error Handling: What if a city page fails to load?
+Recommendation: Individual city failures shouldn't stop the entire state
+Reaper Integration Benefits
+Component Architecture: Clean separation of concerns
+Event-Driven: Parallel processing of multiple cities
+Error Classification: Intelligent retry for failed cities
+Observability: Full tracking of store data collection
+Scalability: Easy to expand to other states/retailers
+Would you like me to elaborate on any of these aspects? Are you thinking of starting with a specific state like Texas, or do you want to design it to handle all 50 states from the beginning?
+
+Also, should we stick with the YAML output format from your PoC, or would you prefer to store the parsed store data in the database for easier querying by other parts of the system?
+
+
+
+
+Retry
+I uploaded page source html files for each of those URLs to the project.  The TX store directory page contains links to pages for each city in TX that has physical walmart stores.  The Austin, TX store directory page contains links to the store page for each physical Walmart store location in Austin, TX, but it also contains a JSON NEXT_DATA <script> tag that has all the data we really want on each store in Austin, TX.
+
+Edit
+
+Parsing strategy for extracting store data from HTML files
+8s
+
+
+
+
+
+
+
+Searched project for “uploaded HTML files TX store directory Austin __NEXT_DATA__ JSON”
+2 results
+
+
+
+
+
+
+Parsing store data within __NEXT_DATA__ JSON script tag
+4s
+
+
+
+
+Searched project for “nearByNodes store data structure capabilities address geoPoint”
+3 results
+
+
+
+
+
+
+
+
+Decoded store data structure from HTML script tag
+7s
+
+
+
+
+Excellent! I can see the rich store data structure from the uploaded HTML files. This is perfect for understanding how to implement the store-directory fetch type in Reaper.
+
+Data Structure Analysis
+From the Austin page's __NEXT_DATA__ JSON, I can see the store data is extremely comprehensive:
+
+Store Data Location
+javascript
+props.pageProps.initialData.initialDataNearbyNodes.data.nearByNodes.nodes
+Rich Store Information Per Location
+Each store contains:
+
+Basic Info:
+
+id: "1253" (store ID)
+distance: "3.25" (miles)
+type: "STORE"
+displayName: "Austin Supercenter"
+name: "Walmart Supercenter"
+phoneNumber: "512-443-6601"
+Address Details:
+
+json
+"address": {
+  "addressLineOne": "710 E Ben White Blvd",
+  "addressLineTwo": null,
+  "state": "TX",
+  "city": "Austin", 
+  "postalCode": "78704",
+  "country": "US"
+}
+Geographic Data:
+
+json
+"geoPoint": {
+  "latitude": 30.355509,
+  "longitude": -97.734896
+}
+Store Operations:
+
+open24Hours: false
+operationalHours: Detailed daily hours
+isGlassEligible: true
+Services & Capabilities:
+
+capabilities: Array of service types (PICKUP_CURBSIDE, DELIVERY_ADDRESS, etc.)
+services: Array with service details and phone numbers (Pharmacy, Deli, etc.)
+Implementation Strategy for Reaper
+1. Two-Level Fetch Architecture
+Level 1: State Directory (store-directory-state)
+
+URL: https://www.walmart.com/store-directory/tx
+Extracts: List of cities with store counts
+Output: City URLs for Level 2 processing
+Level 2: City Directory (store-directory-city)
+
+URL: https://www.walmart.com/store-directory/tx/austin
+Extracts: Complete store data from __NEXT_DATA__
+Output: Structured store information
+2. Component Architecture Integration
+Updated WalmartForagerComponent:
+
+python
+# In metadata
+"supported_fetch_types": ["search", "search-retry", "store-directory-state", "store-directory-city"]
+
+# In create_fetcher()
+elif fetch_type.lower() == "store-directory-state":
+    return WalmartStoreDirectoryStateFetcher(...)
+elif fetch_type.lower() == "store-directory-city":
+    return WalmartStoreDirectoryCityFetcher(...)
+3. Dispatcher Workflow
+Phase 1: State Processing
+
+python
+# Dispatch state-level request
+{
+    "request_id": "store_dir_state_tx_001",
+    "retailer": "Walmart",
+    "fetch_type": "store-directory-state", 
+    "fetch_query": "tx",
+    "start_url": "https://www.walmart.com/store-directory/tx"
+}
+Phase 2: City Processing (Auto-dispatched after state completes)
+
+python
+# Multiple city requests dispatched
+{
+    "request_id": "store_dir_city_tx_austin_001",
+    "retailer": "Walmart", 
+    "fetch_type": "store-directory-city",
+    "fetch_query": "tx/austin",
+    "start_url": "https://www.walmart.com/store-directory/tx/austin"
+}
+4. Data Extraction Implementation
+City-Level Parser:
+
+python
+class WalmartStoreDirectoryCityParser:
+    def extract_stores_from_next_data(self, html_content):
+        """Extract store data from __NEXT_DATA__ JSON"""
+        
+        # Extract __NEXT_DATA__ script
+        sel = Selector(text=html_content)
+        data = sel.xpath('//script[@id="__NEXT_DATA__"]/text()').get()
+        next_data = json.loads(data)
+        
+        # Navigate to store data
+        stores_data = next_data['props']['pageProps']['initialData']['initialDataNearbyNodes']['data']['nearByNodes']['nodes']
+        
+        # Process each store
+        enriched_stores = []
+        for store in stores_data:
+            store_entry = self.build_store_entry(store)
+            enriched_stores.append(store_entry)
+            
+        return enriched_stores
+5. Key Design Considerations
+Data Storage Options:
+
+Database Tables: New walmart_stores table for structured queries
+Parquet Files: For analytics and BI integration
+YAML Files: For human-readable reference (as in your PoC)
+Error Handling:
+
+State-level failures shouldn't stop city processing
+Individual city failures should be retryable
+Malformed __NEXT_DATA__ should be handled gracefully
+Performance:
+
+No cookie seeding needed (public directory pages)
+Batch city requests for efficiency
+Rate limiting between city fetches
+Update Frequency:
+
+Monthly or quarterly updates (stores change infrequently)
+Delta updates for store closures/openings
+6. Benefits of This Approach
+Comprehensive Coverage: All US states and cities
+Rich Data: GPS coordinates, hours, services, capabilities
+Component Architecture: Clean separation and reusability
+Event-Driven: Parallel processing of multiple cities
+Scalable: Easy to expand to other states/retailers
+Would you like me to elaborate on any specific aspect of this implementation? Are you thinking of starting with just Texas, or designing it to handle all 50 states from the beginning?
+
+Also, what's your preference for data storage - database tables, parquet files, YAML files, or a combination?
+
+
+
+
+Retry
+Compare the data in the JSON NEXT_DATA tag to the design of the Store ORM model in reaper.
+
+Edit
+
+Thinking about comparing JSON data with Store ORM model design
+1s
+
+
+
+
+Searched project for “Store ORM model database schema fields columns”
+3 results
+
+
+
+
+
+
+
+Investigating Store ORM model fields and structure
+6s
+
+
+
+
+
+Searched project for “Store ORM model complete field definitions services capabilities operational_hours”
+4 results
+
+
+
+
+
+
+
+
+Scrutinized store ORM model against Walmart JSON data.
+12s
+
+
+
+
+
+
+
+
+
+
+
+Perfect! Now I can provide a comprehensive comparison between the current Store ORM model and the rich JSON data available in the __NEXT_DATA__ tag.
+
+Data Comparison: ORM Model vs JSON NEXT_DATA
+✅ Well-Aligned Fields
+Fields that map directly and are already implemented:
+
+Store ORM Field	JSON NEXT_DATA Path	Example Value
+retailer_store_id	node.id	"1253"
+display_name	node.displayName	"Austin Supercenter"
+phone	node.phoneNumber	"512-443-6601"
+address	node.address.addressLineOne	"710 E Ben White Blvd"
+address_line_two	node.address.addressLineTwo	null
+city	node.address.city	"Austin"
+state	node.address.state	"TX"
+zip	node.address.postalCode	"78704"
+country	node.address.country	"US"
+latitude	node.geoPoint.latitude	30.355509
+longitude	node.geoPoint.longitude	-97.734896
+is_open_24h	node.open24Hours	false
+is_glass_eligible	node.isGlassEligible	true
+operational_hours	node.operationalHours	[{"day":"Sunday","start":"06:00","end":"23:00"}...]
+services	node.services	[{"displayName":"Deli","name":"DELI"}...]
+capabilities	node.capabilities	[{"accessPointType":"PICKUP_CURBSIDE"}...]
+🆕 New Rich Data Available (Not in ORM)
+Additional fields from JSON that could enhance the ORM model:
+
+JSON Field	Example Value	Potential Use
+node.name	"Walmart Supercenter"	Store format/type
+node.type	"STORE"	Store classification
+node.distance	"3.25"	Dynamic field (query-dependent)
+node.tempOperationalHours	null	Holiday/temporary hours
+node.nodeDistance.unitOfMeasure	"MI"	Distance unit
+node.nodeDistance.value	7.6	Distance value
+📊 Complex JSON Structures
+Services Array Structure:
+
+json
+"services": [
+  {
+    "displayName": "Deli",
+    "name": "DELI", 
+    "phone": null
+  },
+  {
+    "displayName": "Pharmacy",
+    "name": "PHARMACY",
+    "phone": "512-443-6588"
+  }
+]
+Capabilities Array Structure:
+
+json
+"capabilities": [
+  {
+    "accessPointId": "1740db6f-9f91-4a47-a45f-ccbe492278dd",
+    "accessPointType": "PICKUP_CURBSIDE"
+  },
+  {
+    "accessPointId": "17f02856-e4a1-4c40-8844-c53a65e53852", 
+    "accessPointType": "PICKUP_INSTORE"
+  }
+]
+Operational Hours Structure:
+
+json
+"operationalHours": [
+  {"day": "Sunday", "start": "06:00", "end": "23:00", "closed": false},
+  {"day": "Monday", "start": "06:00", "end": "23:00", "closed": false}
+]
+⚠️ Missing/Deprecated ORM Fields
+Fields in ORM that aren't available in JSON:
+
+ORM Field	Status	Recommendation
+website	Not in JSON	Keep for manual entry
+opening_hours	Legacy field	Replaced by operational_hours
+has_pharmacy	Boolean	Derive from services array
+has_fuel	Boolean	Derive from services array
+has_tire_center	Boolean	Derive from services array
+is_garden_center	Boolean	Derive from services array
+country_code	Not in JSON	Derive from country ("US" → "USA")
+time_zone	Not in JSON	Derive from coordinates
+🎯 ORM Model Assessment
+Excellent Alignment: The current Store ORM model appears to have been designed with Walmart's store directory data in mind! The key JSON fields map perfectly to existing ORM fields.
+
+Key Strengths:
+
+JSON Support: services, capabilities, and operational_hours use CrossDatabaseJSON for complex data
+Geographic Data: Proper Numeric(9, 6) precision for coordinates
+Extensibility: Room for additional fields without breaking changes
+Recent Updates: Comments show "🆕 YAML-driven fields" indicating recent enhancements
+Areas for Enhancement:
+
+Derive Boolean Fields: Calculate has_pharmacy, has_fuel, etc. from services array
+Add Missing Fields: Consider node.name (store format) and node.type
+Timezone Enhancement: Auto-calculate time_zone from coordinates using TimezoneFinder
+Temporary Hours: Add temp_operational_hours field for holiday schedules
+📈 Implementation Strategy
+Phase 1: Direct Mapping
+
+Most fields can be directly mapped from JSON to ORM
+Existing services, capabilities, operational_hours JSON fields are perfect
+Phase 2: Derived Fields
+
+Calculate boolean service flags from services array
+Derive time_zone from coordinates (as your PoC already does)
+Set country_code based on country field
+Phase 3: Enhancements
+
+Add temp_operational_hours field for seasonal changes
+Consider store_format field derived from node.name
+The ORM model is remarkably well-suited for this data! It appears to have been designed with exactly this use case in mind, with the JSON fields perfectly accommodating the complex nested data structures from Walmart's API.
+
+
+
+
+Retry
+
+granary_public_store_formats.csv
+csv
+
+Familiarize yourself with the StoreFormat ORM model in reaper as well.  The node.name field will map to a StoreFormat object.  Attached is a csv file showing the known valid Walmart store formats.
+
+Edit
+
+Decoded store format mapping between JSON and ORM model.
+5s
+
+
+
+
+
+
+
+Analyzed data
+View analysis
+
+
+
+
+Analyzed store format mapping from JSON to ORM model
+3s
+
+
+
+
+Perfect! Now I can see the complete picture of how the JSON data maps to the StoreFormat ORM model.
+
+StoreFormat ORM Model Analysis
+Current Database Store Formats
+From the CSV, Walmart currently has 4 store formats defined:
+
+format_id	name	brand_id	Status
+1	"Walmart Supercenter"	1	Active
+2	"Walmart"	1	Active
+3	"Neighborhood Market"	1	Active
+4	"Clinic Pharmacy"	1	Active
+JSON Data Mapping
+From the Austin __NEXT_DATA__ examples:
+
+json
+{
+  "id": "1253",
+  "name": "Walmart Supercenter",
+  "displayName": "Austin Supercenter"
+}
+Perfect Direct Mapping:
+
+JSON node.name → StoreFormat.name → Store.format_id (FK)
+Example: "Walmart Supercenter" maps directly to format_id: 1
+StoreFormat ORM Architecture
+python
+class StoreFormat(Base):
+    __tablename__ = 'store_formats'
+    
+    format_id = Column(Integer, primary_key=True, autoincrement=True)
+    brand_id = Column(Integer, ForeignKey('retailer_brands.brand_id'), nullable=False)
+    name = Column(TEXT, nullable=False)  # Maps to JSON node.name
+    is_deleted = Column(Boolean, default=False)
+    version = Column(Integer, default=1)
+    
+    # Relationships
+    brand = relationship("RetailerBrand", back_populates="store_formats")
+    stores = relationship("Store", back_populates="store_format")
+
+class Store(Base):
+    format_id = Column(Integer, ForeignKey('store_formats.format_id'), nullable=False)
+    store_format = relationship("StoreFormat", back_populates="stores")
+Data Extraction Strategy
+Store Directory Parser Implementation:
+
+python
+class WalmartStoreDirectoryCityParser:
+    def __init__(self):
+        # Cache for format lookups
+        self.format_cache = {}
+        
+    def extract_stores_from_next_data(self, html_content, db_session):
+        """Extract store data with proper StoreFormat mapping"""
+        
+        stores_data = self.get_stores_from_json(html_content)
+        enriched_stores = []
+        
+        for store_node in stores_data:
+            # Get format_id from store format name
+            format_name = store_node.get('name')  # "Walmart Supercenter"
+            format_id = self.get_format_id(format_name, db_session)
+            
+            store_entry = {
+                'retailer_store_id': store_node.get('id'),
+                'format_id': format_id,  # FK to store_formats table
+                'display_name': store_node.get('displayName'),
+                'address': store_node.get('address', {}).get('addressLineOne'),
+                'city': store_node.get('address', {}).get('city'),
+                'state': store_node.get('address', {}).get('state'),
+                # ... other fields
+            }
+            enriched_stores.append(store_entry)
+            
+        return enriched_stores
+    
+    def get_format_id(self, format_name, db_session):
+        """Get format_id with caching for performance"""
+        if format_name in self.format_cache:
+            return self.format_cache[format_name]
+            
+        # Query database for format
+        store_format = db_session.query(StoreFormat).filter_by(
+            name=format_name,
+            is_deleted=False
+        ).first()
+        
+        if store_format:
+            self.format_cache[format_name] = store_format.format_id
+            return store_format.format_id
+        else:
+            # Handle unknown format - could log warning or create new format
+            self.logger.warning(f"Unknown store format: {format_name}")
+            return None  # or default format_id
+Expected JSON Format Values
+Based on the database and typical Walmart store types, we should expect these node.name values:
+
+Confirmed Mappings:
+
+"Walmart Supercenter" → format_id: 1 ✅
+"Walmart" → format_id: 2 ✅
+"Neighborhood Market" → format_id: 3 ✅
+"Clinic Pharmacy" → format_id: 4 ✅
+Potential New Formats (might appear in JSON):
+
+"Sam's Club" → Would need new StoreFormat record
+"Walmart Express" → Would need new StoreFormat record
+"Distribution Center" → Might not be a customer-facing store
+Error Handling Strategy
+Unknown Store Format Handling:
+
+python
+def handle_unknown_format(self, format_name, db_session, logger):
+    """Handle cases where JSON contains unknown store format"""
+    
+    # Option 1: Log and use default format
+    logger.warning(f"Unknown store format '{format_name}', using default")
+    return 1  # Default to Walmart Supercenter
+    
+    # Option 2: Create new format dynamically (if authorized)
+    if self.auto_create_formats:
+        new_format = StoreFormat(
+            brand_id=1,  # Walmart brand_id
+            name=format_name
+        )
+        db_session.add(new_format)
+        db_session.flush()  # Get the format_id
+        return new_format.format_id
+    
+    # Option 3: Skip store with unknown format
+    return None
+Benefits of This Architecture
+Referential Integrity: Foreign key ensures valid store formats
+Normalization: Store format data isn't duplicated across stores
+Extensibility: Easy to add new store formats as Walmart expands
+Querying: Can easily find all stores of a specific format
+Data Quality: Consistent format naming across the system
+Integration with Store Directory Fetcher
+Database Requirements:
+
+Access to StoreFormat table for format lookups
+Possible need for RetailerBrand lookup (brand_id=1 for Walmart)
+Transaction handling for batch store inserts
+Performance Considerations:
+
+Cache format lookups to avoid repeated database queries
+Batch database operations when processing multiple cities
+Consider format validation before starting large state-wide fetches
+This architecture perfectly supports the store directory fetching because the JSON node.name field directly maps to the existing StoreFormat.name field, maintaining referential integrity while allowing for extensibility as new store formats emerge.
+
+
+
+
+Retry
+Familiarize yourself with all of the ORM models in reaper to understand the relationships.
+
+Edit
+
+Thinking about understanding ORM model relationships in reaper
+1s
+
+
+
+
+Searched project for “ORM models relationships database schema retailer brand store format”
+5 results
+
+
+
+
+
+
+
+
+
+I need to get the complete picture of all ORM models in the Reaper system.
+1s
+
+
+
+Searched project for “complete ORM models ORMFetcherSession ORMFetchedFile RequestTree ActiveJobLock PermanentJobFailure”
+4 results
+
+
+
+
+
+
+
+
+
+Now I need to search for the complete RequestTree model definition and any other ORM models I might
+1s
+
+
+
+Searched project for “RequestTree complete definition failed_urls dispatch_id ORM model”
+4 results
+
+
+
+
+
+
+
+
+Mapped out comprehensive ORM models and database relationships.
+1s
+
+
+Perfect! Now I have a comprehensive understanding of all the ORM models in Reaper. Let me provide you with a complete overview of the database schema and relationships.
+
+Complete Reaper Database Schema & Relationships
+🏢 Retailer & Store Hierarchy
+python
+# Top-level retailer organization
+Retailer (retailers)
+├── retailer_id (PK)
+├── name (unique)
+└── brands: [RetailerBrand]
+
+RetailerBrand (retailer_brands)  
+├── brand_id (PK)
+├── retailer_id (FK → retailers)
+├── name
+├── retailer: Retailer
+├── stores: [Store]
+└── store_formats: [StoreFormat]
+
+StoreFormat (store_formats)
+├── format_id (PK) 
+├── brand_id (FK → retailer_brands)
+├── name ("Walmart Supercenter", "Neighborhood Market")
+├── brand: RetailerBrand
+└── stores: [Store]
+
+Store (stores) 
+├── store_id (PK) - Database primary key
+├── retailer_store_id (TEXT) - Business identifier ("1253")
+├── brand_id (FK → retailer_brands)
+├── format_id (FK → store_formats)
+├── display_name, address, city, state, zip
+├── latitude, longitude, phone, website
+├── services (JSON) - Pharmacy, Deli, etc.
+├── capabilities (JSON) - Pickup, Delivery, etc.
+├── operational_hours (JSON) - Daily hours
+├── country, country_code, time_zone
+├── is_open_24h, is_glass_eligible
+├── brand: RetailerBrand
+└── store_format: StoreFormat
+🎯 Job Management & Targets
+python
+ScrapeRequest (scrape_requests)
+├── request_id (PK)
+├── query ("iphone 15")
+├── url
+└── is_deleted, version
+
+ActiveScrapeTarget (active_scrape_targets)
+├── id (PK)
+├── store_id (FK → stores)
+├── scrape_request_id (FK → scrape_requests) 
+├── is_active, priority
+├── store: Store
+└── scrape_request: ScrapeRequest
+🔒 Concurrency & State Management
+python
+ActiveJobLock (active_job_locks)
+├── lock_id (PK)
+├── store_id (INT) - Not FK, just identifier
+├── fetch_query ("iphone 15")
+├── request_id (unique UUID)
+└── lock_timestamp
+
+PermanentJobFailure (permanent_job_failures)
+├── failure_id (PK)
+├── store_id (FK → stores)
+├── scrape_request_id (FK → scrape_requests)
+├── fetch_query, failure_reason, failure_count
+├── last_failure_time, created_at
+├── store: Store
+└── scrape_request: ScrapeRequest
+🌳 Request Tracking & Completion
+python
+RequestTree (request_trees)
+├── request_id (PK, UUID) - Current request ID
+├── original_request_id - Root of retry tree
+├── parent_request_id - Immediate parent
+├── job_type ("search", "search-retry")
+├── store_id (FK → stores)
+├── scrape_request_id (FK → scrape_requests)
+├── query, retry_count, status
+├── started_at, completed_at, superseded_by
+├── success, failure_reason
+├── session_count, total_pages_fetched
+├── failed_urls (JSON) - URLs needing retry
+├── has_pending_children
+├── dispatch_id - Links to dispatch batch
+├── store: Store
+└── scrape_request: ScrapeRequest
+
+DispatchBatch (dispatch_batches)
+├── dispatch_id (PK, UUID)
+├── created_at, completed_at
+├── total_requests, completed_requests
+├── successful_requests, failed_requests
+├── is_complete
+└── total_sessions, total_pages_fetched
+
+RetryQueue (retry_queue)
+├── retry_id (PK, UUID)
+├── original_request_id (FK → request_trees)
+├── retry_attempt, max_retry_attempts
+├── scheduled_retry_time
+├── job_type, store_id, scrape_request_id, query
+├── status, processed_at, dispatched_request_id
+├── failure_reason, retry_strategy
+├── original_request: RequestTree
+├── store: Store
+└── scrape_request: ScrapeRequest
+📊 Session & File Tracking
+python
+ORMFetcherSession (fetcher_session)
+├── fetcher_session_id (PK)
+├── store_id (FK → stores)
+├── scrape_request_id (FK → scrape_requests) 
+├── retailer, fetch_type, fetch_query, start_url
+├── success, blocked, error_message
+├── start_time, end_time, duration_ms
+├── fetched_count, blocked_count, retry_count
+├── session_file_path, needs_retry (JSON)
+├── retry_sequence, is_retry_session
+├── original_session_id (FK → fetcher_session)
+
+# 🆕 Cookie Seeding Observability (15+ fields)
+├── seeding_enabled, seeding_attempted, seeding_successful
+├── seeding_cache_hit, seeding_cookies_harvested_count
+├── seeding_headers_harvested_count, seeding_duration_ms
+├── seeding_cache_age_minutes, seeding_url
+├── seeding_attempts, seeding_error_reason
+├── seeding_cache_key, seeding_proxy_consistency
+├── seeding_user_agent_consistency
+
+├── fetched_files: [ORMFetchedFile]
+├── original_session: ORMFetcherSession (self-ref)
+└── retry_sessions: [ORMFetcherSession] (self-ref)
+
+ORMFetchedFile (fetched_file)
+├── fetched_file_id (PK)
+├── fetcher_session_id (FK → fetcher_session)
+├── store_id (FK → stores)
+├── retailer, retailer_store_id, fetch_type, fetch_query
+├── url, filename, size, page_number, fetched_time
+├── blocked, success, message, response_status_code
+├── error_code, retry_reason, retry_of_url
+├── retry_of_fetched_file_id (FK → fetched_file)
+
+# 🆕 Enhanced Observability 
+├── proxy_provider, proxy_type, scraper_strategy
+├── browser_persona_id, browser_persona_user_agent
+├── request_start_time, request_duration_ms
+├── retry_sequence_number, is_retry_of_failed_request
+├── dispatcher_retry_eligible, error_category
+
+# 🆕 Cookie Seeding Usage Tracking
+├── used_seeded_cookies, used_seeded_headers
+├── seeded_cookies_count, seeded_headers_count
+├── seeding_cache_key_used
+
+├── fetcher_session: ORMFetcherSession
+├── store: Store
+└── retry_of_file: ORMFetchedFile (self-ref)
+📁 File Processing & Parsing
+python
+ORMParsedFile (parsed_file)
+├── parsed_file_id (PK)
+├── fetcher_session_id (FK → fetcher_session)
+├── filename (unique), file_size, product_count
+├── parsed_timestamp
+├── fetcher_session: ORMFetcherSession
+└── source_files: [ORMFetchedFile] (many-to-many)
+
+ORMParsedFileAssociation (parsed_file_to_fetched_file_association)
+├── parsed_file_id (FK → parsed_file)
+└── fetched_file_id (FK → fetched_file)
+🔗 Key Relationships & Architecture Patterns
+Hierarchical Store Organization
+Retailer → RetailerBrand → Store / StoreFormat
+Supports multi-retailer expansion (Walmart, Target, Kroger, etc.)
+Store formats linked to brands (Walmart Supercenter, Neighborhood Market)
+Request Lifecycle Tracking
+RequestTree: Parent-child retry relationships
+DispatchBatch: Groups requests for completion monitoring
+RetryQueue: Delayed retry scheduling to prevent storms
+Data Flow Architecture
+ScrapeRequest defines what to fetch
+ActiveScrapeTarget controls which stores/queries are active
+ORMFetcherSession tracks execution
+ORMFetchedFile tracks individual page results
+ORMParsedFile tracks processed data
+Observability & Analytics
+15+ cookie seeding metrics for bot detection tracking
+Retry traceability with parent-child relationships
+URL-specific retry with failed_urls JSON field
+Performance metrics with timing and resource usage
+Store Directory Integration Points
+For the new store-directory fetch type, the key integration points would be:
+
+Store Table Updates: New stores from JSON would populate the stores table
+Format Mapping: JSON node.name maps to StoreFormat.format_id
+Session Tracking: ORMFetcherSession with fetch_type="store-directory"
+File Management: ORMFetchedFile for state/city HTML pages
+Request Trees: Track state → city fetch progression
+The architecture is extremely well-designed for the store directory feature! The existing relationships and observability will provide complete tracking of the directory fetching process.
+
+
+
+
+Retry
+Take a look at parse_walmart_store_directory.py and /Users/dalesmith/Projects/arachne/src/parse_walmart_store_directory_by_state.py.  I attached these to the project from a prior PoC project for forager.  These do a good job of parsing out the JSON data from the state store directory page, and the city/state store directory page.
+
+Edit
+
+Examining Walmart store directory parser files for project
+2s
+
+
+
+
+Searched project for “parse_walmart_store_directory.py state directory parser JSON extraction”
+5 results
+
+
+
+
+
+
+
+
+
+Analyzed Walmart store directory parsers for data extraction
+6s
+
+
+
+Excellent! These PoC parsers provide a perfect blueprint for implementing the store-directory fetch type in Reaper. Let me analyze both parsers and show how they integrate with the existing architecture.
+
+Parser Analysis: Two-Level Store Directory Architecture
+1. State-Level Parser (parse_walmart_store_directory.py)
+Purpose: Extracts city lists from state directory pages (e.g., https://www.walmart.com/store-directory/tx)
+
+Key Data Extraction Logic:
+
+python
+def find_store_pages_directory(data):
+    if isinstance(data, dict):
+        if data.get('type') == 'StorePagesStoreDirectory':
+            return data
+        # Recursive search through __NEXT_DATA__ structure
+        
+# Extract cities from specific JSON structure
+store_directory_json_str = store_pages_directory_data['configs']['storeDirectory'][0]['text']
+store_directory_data = json.loads(store_directory_json_str)
+
+# Build city URLs
+for state_code, cities in store_directory_data.items():
+    for city in cities:
+        cleaned_city = re.sub(r'\s*\(\d+\)', '', city).strip()  # "Austin (7)" → "Austin"
+        city_slug = quote(cleaned_city.lower())
+        url = urljoin(base_url, f"{state_code}/{city_slug}")
+Output: State → Cities mapping for subsequent city-level fetching
+
+2. City-Level Parser (parse_walmart_store_directory_by_state.py)
+Purpose: Extracts complete store data from city directory pages (e.g., https://www.walmart.com/store-directory/tx/austin)
+
+Key Data Extraction Logic:
+
+python
+# Direct path to store data in __NEXT_DATA__
+stores_data = next_data_json['props']['pageProps']['initialData']['initialDataNearbyNodes']['data']['nearByNodes']['nodes']
+
+def build_store_entry(self, store, timezone):
+    return {
+        'store_id': store.get('id'),                    # "1253"
+        'store_address': store.get('address', {}).get('addressLineOne'),
+        'store_city': store.get('address', {}).get('city'),
+        'store_state': store.get('address', {}).get('state'),
+        'store_zip_code': store.get('address', {}).get('postalCode'),
+        'store_latitude': store.get('geoPoint', {}).get('latitude'),
+        'store_longitude': store.get('geoPoint', {}).get('longitude'),
+        'store_is_open_24h': store.get('open24Hours'),
+        'store_services': [svc.get('displayName') for svc in (store.get('services') or [])],
+        'store_capabilities': [cap.get('accessPointType') for cap in (store.get('capabilities') or [])],
+        'store_operational_hours': store.get('operationalHours'),
+        'store_is_glass_eligible': store.get('isGlassEligible'),
+        'store_time_zone': timezone,  # Enriched via TimezoneFinder
+        'store_url': self.build_store_url(store_id, city, state)
+    }
+Enhanced Features:
+
+Timezone Enrichment: Uses TimezoneFinder to get timezone from GPS coordinates
+Individual Store URLs: Builds direct store page URLs
+YAML Persistence: Maintains cumulative store database
+Deduplication: Updates existing stores vs creating duplicates
+Integration Strategy for Reaper Architecture
+Phase 1: Thresher Component Integration
+Create WalmartStoreDirectoryParser:
+
+python
+# backend/components/walmart/thresher/store_directory_parser.py
+class WalmartStoreDirectoryStateParser(ParserStrategy):
+    """Parses state-level store directory pages to extract city lists"""
+    
+    def parse_html(self, html_content, file_record):
+        next_data_json = self.extract_next_data(html_content)
+        
+        # Use PoC logic to find StorePagesStoreDirectory module
+        store_pages_directory_data = self.find_store_pages_directory(next_data_json)
+        store_directory_json_str = store_pages_directory_data['configs']['storeDirectory'][0]['text']
+        cities_data = json.loads(store_directory_json_str)
+        
+        # Build city URLs for subsequent fetching
+        city_urls = []
+        for state_code, cities in cities_data.items():
+            for city in cities:
+                cleaned_city = re.sub(r'\s*\(\d+\)', '', city).strip()
+                city_slug = quote(cleaned_city.lower())
+                url = f"https://www.walmart.com/store-directory/{state_code}/{city_slug}"
+                city_urls.append({
+                    'state': state_code,
+                    'city': cleaned_city,
+                    'url': url
+                })
+        
+        return {
+            'cities': city_urls,
+            'state': state_code,
+            'total_cities': len(city_urls)
+        }
+
+class WalmartStoreDirectoryCityParser(ParserStrategy):
+    """Parses city-level store directory pages to extract store data"""
+    
+    def parse_html(self, html_content, file_record):
+        next_data_json = self.extract_next_data(html_content)
+        
+        # Use PoC logic to get stores
+        stores_data = next_data_json['props']['pageProps']['initialData']['initialDataNearbyNodes']['data']['nearByNodes']['nodes']
+        
+        # Enrich with timezone data (as in PoC)
+        enriched_stores = self.enrich_stores_with_timezone(stores_data)
+        
+        return {
+            'stores': enriched_stores,
+            'store_count': len(enriched_stores),
+            'city': file_record.fetch_query.split('/')[-1],  # Extract city from query
+            'state': file_record.fetch_query.split('/')[0]   # Extract state from query
+        }
+Phase 2: Database Integration
+Store Persistence Strategy:
+
+python
+# backend/engines/thresher/store_directory_persistence.py
+class StoreDirectoryPersistence:
+    """Handles store data persistence to database"""
+    
+    def persist_stores(self, parsed_stores, db_session, logger):
+        """Persist parsed store data to database with proper relationships"""
+        
+        persisted_stores = []
+        for store_data in parsed_stores:
+            # Get or create store format
+            format_id = self.get_or_create_store_format(
+                store_data['store_brand_format'], db_session
+            )
+            
+            # Check if store already exists
+            existing_store = db_session.query(Store).filter_by(
+                retailer_store_id=store_data['store_id']
+            ).first()
+            
+            if existing_store:
+                # Update existing store
+                self.update_store_data(existing_store, store_data, format_id)
+            else:
+                # Create new store
+                new_store = self.create_new_store(store_data, format_id)
+                db_session.add(new_store)
+                
+            persisted_stores.append(store_data['store_id'])
+            
+        return persisted_stores
+    
+    def get_or_create_store_format(self, format_name, db_session):
+        """Get format_id, creating if needed"""
+        store_format = db_session.query(StoreFormat).filter_by(
+            name=format_name,
+            brand_id=1,  # Walmart brand_id
+            is_deleted=False
+        ).first()
+        
+        if not store_format:
+            # Create new format if needed
+            store_format = StoreFormat(
+                brand_id=1,
+                name=format_name
+            )
+            db_session.add(store_format)
+            db_session.flush()  # Get format_id
+            
+        return store_format.format_id
+Phase 3: Workflow Integration
+Two-Level Dispatch Strategy:
+
+python
+# Dispatcher creates state-level requests first
+{
+    "request_id": "store_dir_state_tx_001",
+    "retailer": "Walmart",
+    "fetch_type": "store-directory-state",
+    "fetch_query": "tx",
+    "start_url": "https://www.walmart.com/store-directory/tx"
+}
+
+# After state parsing, auto-dispatch city requests
+{
+    "request_id": "store_dir_city_tx_austin_001", 
+    "retailer": "Walmart",
+    "fetch_type": "store-directory-city",
+    "fetch_query": "tx/austin",
+    "start_url": "https://www.walmart.com/store-directory/tx/austin"
+}
+Fetcher Result Listener Enhancement:
+
+python
+# backend/services/fetch_result_listener/main.py
+async def handle_store_directory_result(self, fetch_result):
+    """Handle store directory parsing and auto-dispatch city requests"""
+    
+    if fetch_result.fetch_type == "store-directory-state":
+        # Parse state page to get city list
+        parsed_cities = await self.parse_store_directory_state(fetch_result)
+        
+        # Auto-dispatch city requests
+        for city_data in parsed_cities['cities']:
+            city_request = self.build_city_fetch_request(city_data)
+            await self.dispatch_city_request(city_request)
+            
+    elif fetch_result.fetch_type == "store-directory-city":
+        # Parse city page to get store data
+        parsed_stores = await self.parse_store_directory_city(fetch_result)
+        
+        # Persist stores to database
+        await self.persist_stores_to_database(parsed_stores)
+Key Benefits of PoC Integration
+1. Proven Data Extraction
+Robust JSON Navigation: Handles complex __NEXT_DATA__ structure
+Error Recovery: Graceful handling of missing data
+Field Mapping: Complete coverage of all store attributes
+2. Smart Enhancements
+Timezone Enrichment: Automatic timezone calculation from GPS coordinates
+URL Building: Proper store page URL construction
+Data Deduplication: Update vs insert logic for existing stores
+3. Production-Ready Features
+Comprehensive Logging: Detailed progress tracking
+Batch Processing: Handles multiple fetched files
+YAML Backup: Human-readable data persistence alongside database
+4. Architecture Alignment
+Perfect ORM Mapping: Data structure aligns with existing Store model
+Component Pattern: Easily integrates with WalmartThresherComponent
+Event-Driven: Fits perfectly with Pub/Sub workflow
+The PoC parsers provide an excellent foundation that can be directly integrated into Reaper's component architecture with minimal modifications! The data extraction logic is solid and the output format maps perfectly to the existing ORM models.
+
+
+
+
+Retry
+ok, I want to think about how we can add fetch types for Walmart store data to the reaper engines and to the Walmart reaper component.  I want to enable forager_cli to run these fetches, and thresher_cli to run the parsers for these fetches.  I do NOT want to start thinking about how to enable the services to run these fetches through the event system yet.  We will do that in a future iteration.
+
+Edit
+
+Strategized Walmart store data fetch types for CLI integration
+12s
+
+
+
+
+
+
+
+
+
+Perfect! Let's focus on extending the CLI capabilities with the new store directory fetch types. This is a great incremental approach - get the core functionality working through CLI first, then integrate with the event system later.
+
+Implementation Plan: CLI-Only Store Directory Support
+1. New Fetch Types to Add
+Based on the PoC analysis, we need two complementary fetch types:
+
+store-directory-state - Fetches state pages to extract city lists
+Example: https://www.walmart.com/store-directory/tx
+Output: List of cities with Walmart stores
+store-directory-city - Fetches city pages to extract store data
+Example: https://www.walmart.com/store-directory/tx/austin
+Output: Complete store information for all stores in city
+2. Forager Component Updates
+Update WalmartForagerComponent registration:
+
+python
+# backend/components/walmart/__init__.py
+registry.register_component(
+    retailer="Walmart",
+    component_type="forager", 
+    component_class=WalmartForagerComponent,
+    metadata={
+        "description": "Walmart forager component with search, retry, and store directory capabilities",
+        "supported_fetch_types": ["search", "search-retry", "store-directory-state", "store-directory-city"],
+        "bot_detection_threshold": 1,
+        "proxy_fallback_enabled": True
+    }
+)
+Extend WalmartForagerComponent.create_fetcher():
+
+python
+# backend/components/walmart/forager/walmart_forager_component.py
+def create_fetcher(self, fetch_type: str, **kwargs) -> 'RetailerFetcher':
+    # ... existing search and search-retry logic ...
+    
+    elif fetch_type.lower() == "store-directory-state":
+        return WalmartStoreDirectoryStateFetcher(
+            store_identification=kwargs.get('store_identification'),
+            fetch_query=kwargs.get('fetch_query'),  # State code (e.g., 'tx')
+            start_url=kwargs.get('start_url'),
+            project_config=self.project_config,
+            logger=self.logger,
+            **{k: v for k, v in kwargs.items() if k not in [
+                'store_identification', 'fetch_query', 'start_url'
+            ]}
+        )
+        
+    elif fetch_type.lower() == "store-directory-city":
+        return WalmartStoreDirectoryCityFetcher(
+            store_identification=kwargs.get('store_identification'),
+            fetch_query=kwargs.get('fetch_query'),  # "tx/austin"
+            start_url=kwargs.get('start_url'),
+            project_config=self.project_config,
+            logger=self.logger,
+            **{k: v for k, v in kwargs.items() if k not in [
+                'store_identification', 'fetch_query', 'start_url'
+            ]}
+        )
+3. New Fetcher Implementations
+Create WalmartStoreDirectoryStateFetcher:
+
+python
+# backend/components/walmart/forager/store_directory_fetchers.py
+from .fetcher import RetailerFetcher
+from .paginator import SinglePagePaginator
+from .response_analyzer import WalmartStoreDirectoryResponseAnalyzer
+
+class WalmartStoreDirectoryStateFetcher(RetailerFetcher):
+    """
+    Fetches state-level store directory pages.
+    Single page fetch - no pagination needed.
+    """
+    
+    def __init__(self, store_identification: dict, fetch_query: str, start_url: str, 
+                 project_config, logger, **kwargs):
+        super().__init__(
+            retailer="Walmart",
+            store_identification=store_identification,
+            fetch_type="store-directory-state", 
+            fetch_query=fetch_query,  # State code like "tx"
+            start_url=start_url,
+            project_config=project_config,
+            logger=logger,
+            singleton=True,  # Single page fetch
+            **kwargs
+        )
+    
+    def _create_paginator(self):
+        return SinglePagePaginator()
+    
+    def _create_response_analyzer(self):
+        return WalmartStoreDirectoryResponseAnalyzer()
+    
+    async def fetch_all(self, start_url):
+        """Fetch single state directory page"""
+        return await self.fetcher.fetch_single_url(
+            start_url, 
+            self.handle_result, 
+            page_num=1
+        )
+
+class WalmartStoreDirectoryCityFetcher(RetailerFetcher):
+    """
+    Fetches city-level store directory pages.
+    Single page fetch - no pagination needed.
+    """
+    
+    def __init__(self, store_identification: dict, fetch_query: str, start_url: str,
+                 project_config, logger, **kwargs):
+        super().__init__(
+            retailer="Walmart",
+            store_identification=store_identification,
+            fetch_type="store-directory-city",
+            fetch_query=fetch_query,  # "tx/austin"
+            start_url=start_url,
+            project_config=project_config,
+            logger=logger,
+            singleton=True,  # Single page fetch
+            **kwargs
+        )
+    
+    def _create_paginator(self):
+        return SinglePagePaginator()
+    
+    def _create_response_analyzer(self):
+        return WalmartStoreDirectoryResponseAnalyzer()
+    
+    async def fetch_all(self, start_url):
+        """Fetch single city directory page"""
+        return await self.fetcher.fetch_single_url(
+            start_url,
+            self.handle_result,
+            page_num=1
+        )
+Create supporting components:
+
+python
+# backend/components/walmart/forager/paginator.py (add to existing file)
+class SinglePagePaginator:
+    """No-op paginator for single page fetches"""
+    
+    def get_next_page_url(self, current_url, page_num):
+        return None  # No next page
+    
+    def should_continue(self, response_data, page_num):
+        return False  # Only fetch one page
+
+# backend/components/walmart/forager/response_analyzer.py (add to existing file)  
+class WalmartStoreDirectoryResponseAnalyzer:
+    """Response analyzer for store directory pages"""
+    
+    def analyze_response(self, response_text, url, logger=None):
+        # Basic validation - look for __NEXT_DATA__
+        if '"__NEXT_DATA__"' not in response_text:
+            return {
+                'blocked': True,
+                'reason': 'Missing __NEXT_DATA__ script tag'
+            }
+        
+        return {
+            'blocked': False,
+            'success': True
+        }
+4. Thresher Component Updates
+Create store directory parsers:
+
+python
+# backend/components/walmart/thresher/store_directory_parsers.py
+import json
+import re
+from urllib.parse import urljoin, quote
+from timezonefinder import TimezoneFinder
+from parsel import Selector
+
+from backend.engines.thresher.parser_strategy import ParserStrategy
+
+class WalmartStoreDirectoryStateParser(ParserStrategy):
+    """Parses state-level store directory pages to extract city lists"""
+    
+    def get_parser_type(self):
+        return "store-directory-state"
+    
+    def get_supported_retailers(self):
+        return ["Walmart"]
+    
+    def parse_html(self, html_content, file_record):
+        """Extract city list from state directory page using PoC logic"""
+        
+        next_data_json = self.extract_next_data(html_content)
+        if not next_data_json:
+            return {"error": "Could not find __NEXT_DATA__ script tag"}
+        
+        # Use PoC recursive search logic
+        store_pages_directory_data = self.find_store_pages_directory(next_data_json)
+        if not store_pages_directory_data:
+            return {"error": "Could not find StorePagesStoreDirectory module"}
+        
+        try:
+            store_directory_json_str = store_pages_directory_data['configs']['storeDirectory'][0]['text']
+            store_directory_data = json.loads(store_directory_json_str)
+            
+            # Build city URLs (from PoC logic)
+            cities_data = []
+            for state_code, cities in store_directory_data.items():
+                for city in cities:
+                    if isinstance(city, str):
+                        # "Austin (7)" -> "Austin"
+                        cleaned_city = re.sub(r'\s*\(\d+\)', '', city).strip()
+                        city_slug = quote(cleaned_city.lower())
+                        url = f"https://www.walmart.com/store-directory/{state_code}/{city_slug}"
+                        
+                        cities_data.append({
+                            'state': state_code,
+                            'city': cleaned_city,
+                            'url': url,
+                            'original_text': city  # Keep count info
+                        })
+            
+            return {
+                'success': True,
+                'state': state_code,
+                'cities': cities_data,
+                'total_cities': len(cities_data),
+                'parsed_from': file_record.filename
+            }
+            
+        except Exception as e:
+            return {"error": f"Failed to parse city data: {str(e)}"}
+    
+    def find_store_pages_directory(self, data):
+        """Recursive search from PoC - find StorePagesStoreDirectory module"""
+        if isinstance(data, dict):
+            if data.get('type') == 'StorePagesStoreDirectory':
+                return data
+            for key, value in data.items():
+                result = self.find_store_pages_directory(value)
+                if result:
+                    return result
+        elif isinstance(data, list):
+            for item in data:
+                result = self.find_store_pages_directory(item)
+                if result:
+                    return result
+        return None
+    
+    def extract_next_data(self, html_content):
+        """Extract __NEXT_DATA__ from HTML"""
+        sel = Selector(text=html_content)
+        data = sel.xpath('//script[@id="__NEXT_DATA__"]/text()').get()
+        return json.loads(data) if data else None
+
+class WalmartStoreDirectoryCityParser(ParserStrategy):
+    """Parses city-level store directory pages to extract store data"""
+    
+    def __init__(self):
+        self.timezone_finder = TimezoneFinder()
+    
+    def get_parser_type(self):
+        return "store-directory-city"
+    
+    def get_supported_retailers(self):
+        return ["Walmart"]
+    
+    def parse_html(self, html_content, file_record):
+        """Extract store data from city directory page using PoC logic"""
+        
+        next_data_json = self.extract_next_data(html_content)
+        if not next_data_json:
+            return {"error": "Could not find __NEXT_DATA__ script tag"}
+        
+        try:
+            # Direct path from PoC
+            stores_data = next_data_json['props']['pageProps']['initialData']['initialDataNearbyNodes']['data']['nearByNodes']['nodes']
+            
+            # Enrich with timezone data (from PoC)
+            enriched_stores = []
+            for store in stores_data:
+                latitude = store.get('geoPoint', {}).get('latitude')
+                longitude = store.get('geoPoint', {}).get('longitude')
+                timezone = self.timezone_finder.timezone_at(lat=latitude, lng=longitude) if latitude and longitude else None
+                
+                store_entry = self.build_store_entry(store, timezone)
+                enriched_stores.append(store_entry)
+            
+            return {
+                'success': True,
+                'stores': enriched_stores,
+                'store_count': len(enriched_stores),
+                'city': self.extract_city_from_query(file_record.fetch_query),
+                'state': self.extract_state_from_query(file_record.fetch_query),
+                'parsed_from': file_record.filename
+            }
+            
+        except Exception as e:
+            return {"error": f"Failed to parse store data: {str(e)}"}
+    
+    def build_store_entry(self, store, timezone):
+        """Build store entry using PoC logic"""
+        store_id = store.get('id')
+        city = store.get('address', {}).get('city', '')
+        state = store.get('address', {}).get('state', '')
+        
+        # Build individual store URL
+        store_url = self.build_store_url(store_id, city, state) if store_id and city and state else None
+        
+        return {
+            'store_id': store_id,
+            'store_display_name': store.get('displayName', store.get('name')),
+            'store_brand_format': store.get('name'),  # Maps to StoreFormat.name
+            'store_phone': store.get('phoneNumber'),
+            'store_address': store.get('address', {}).get('addressLineOne'),
+            'store_address_line_two': store.get('address', {}).get('addressLineTwo'),
+            'store_city': city,
+            'store_state': state,
+            'store_zip_code': store.get('address', {}).get('postalCode'),
+            'store_country': store.get('address', {}).get('country'),
+            'store_country_code': 'USA',
+            'store_latitude': store.get('geoPoint', {}).get('latitude'),
+            'store_longitude': store.get('geoPoint', {}).get('longitude'),
+            'store_time_zone': timezone,
+            'store_is_open_24h': store.get('open24Hours'),
+            'store_is_glass_eligible': store.get('isGlassEligible'),
+            'store_services': [svc.get('displayName') for svc in (store.get('services') or [])],
+            'store_capabilities': [cap.get('accessPointType') for cap in (store.get('capabilities') or [])],
+            'store_operational_hours': store.get('operationalHours'),
+            'store_url': store_url
+        }
+    
+    def build_store_url(self, store_id, city, state):
+        """Build individual store page URL"""
+        city_slug = re.sub(r'\s+', '-', city.lower())
+        state_slug = state.lower()
+        return f"https://www.walmart.com/store/{store_id}-{city_slug}-{state_slug}"
+    
+    def extract_city_from_query(self, fetch_query):
+        """Extract city from fetch_query like 'tx/austin'"""
+        return fetch_query.split('/')[-1] if '/' in fetch_query else ''
+    
+    def extract_state_from_query(self, fetch_query):
+        """Extract state from fetch_query like 'tx/austin'"""
+        return fetch_query.split('/')[0] if '/' in fetch_query else fetch_query
+    
+    def extract_next_data(self, html_content):
+        """Extract __NEXT_DATA__ from HTML"""
+        sel = Selector(text=html_content)
+        data = sel.xpath('//script[@id="__NEXT_DATA__"]/text()').get()
+        return json.loads(data) if data else None
+Register parsers in component:
+
+python
+# backend/components/walmart/thresher/walmart_thresher_component.py
+def create_parser(self, parser_type: str):
+    """Create parser based on type"""
+    
+    if parser_type.lower() == "search":
+        return WalmartSearchParser()
+    elif parser_type.lower() == "store-directory-state":
+        return WalmartStoreDirectoryStateParser()
+    elif parser_type.lower() == "store-directory-city":
+        return WalmartStoreDirectoryCityParser()
+    else:
+        raise ValueError(f"Unsupported parser type: {parser_type}")
+
+def can_create_parser(self, parser_type: str) -> bool:
+    """Check if component can create parser for given type"""
+    supported_types = ["search", "store-directory-state", "store-directory-city"]
+    return parser_type.lower() in supported_types
+5. CLI Usage Examples
+forager_cli examples:
+
+bash
+# Fetch Texas state directory to get city list
+python -m backend.cli.forager_cli \
+  --retailer "Walmart" \
+  --retailer-store-id "1253" \
+  --fetch-type "store-directory-state" \
+  --query "tx" \
+  --start-url "https://www.walmart.com/store-directory/tx"
+
+# Fetch Austin city directory to get store data  
+python -m backend.cli.forager_cli \
+  --retailer "Walmart" \
+  --retailer-store-id "1253" \
+  --fetch-type "store-directory-city" \
+  --query "tx/austin" \
+  --start-url "https://www.walmart.com/store-directory/tx/austin"
+thresher_cli examples:
+
+bash
+# Parse state directory file to extract cities
+python -m backend.cli.thresher_cli \
+  --session-id 12345 \
+  --parser-type "store-directory-state"
+
+# Parse city directory file to extract stores
+python -m backend.cli.thresher_cli \
+  --session-id 12346 \
+  --parser-type "store-directory-city"
+6. File Naming & Organization
+Expected file outputs:
+
+State files: Walmart_store-directory-state_1253_tx_page_1_timestamp.html.gz
+City files: Walmart_store-directory-city_1253_tx-austin_page_1_timestamp.html.gz
+Parsed outputs:
+
+State parsed: parsed_Walmart_store-directory-state_1253_tx_session_12345.parquet
+City parsed: parsed_Walmart_store-directory-city_1253_tx-austin_session_12346.parquet
+This approach gives you full CLI control over the store directory fetching and parsing without touching the event system. You can test the complete workflow end-to-end before integrating with the dispatcher/listener services.
+
+
+
+
+Retry
+This will be cumbersome for the user:
+
+# Fetch Texas state directory to get city list python -m backend.cli.forager_cli \ --retailer "Walmart" \ --retailer-store-id "1253" \ --fetch-type "store-directory-state" \ --query "tx" \ --start-url "https://www.walmart.com/store-directory/tx" *# Fetch Austin city directory to get store data *python -m backend.cli.forager_cli \ --retailer "Walmart" \ --retailer-store-id "1253" \ --fetch-type "store-directory-city" \ --query "tx/austin" \ --start-url "https://www.walmart.com/store-directory/tx/austin"
+
+Running an individual fetch job for each state is fine, that's only 50 jobs.  But running an individual job for each city will be very cumbersome - that's a LOT more than 50 jobs.  How can we simplify this for the user?
+
+Edit
+
+Engineered streamlined one-command solution for state-wide data fetching.
+7s
+
+
+
+
+
+
+Excellent point! Running individual commands for every city would be completely impractical. Let's design a much better user experience.
+
+Solution: Single "Complete" Fetch Type
+New Approach: store-directory-complete
+Instead of separate state/city fetch types, create one intelligent fetch type that handles the entire state automatically:
+
+bash
+# ONE command to get ALL store data for Texas
+python -m backend.cli.forager_cli \
+  --retailer "Walmart" \
+  --retailer-store-id "1253" \
+  --fetch-type "store-directory-complete" \
+  --query "tx" \
+  --start-url "https://www.walmart.com/store-directory/tx"
+What this does internally:
+
+Fetches the state page (/tx)
+Parses it immediately to extract city list
+Automatically fetches ALL city pages for that state
+Returns one complete session with all HTML files
+Implementation: Smart Two-Phase Fetcher
+Create WalmartStoreDirectoryCompleteFetcher:
+
+python
+# backend/components/walmart/forager/store_directory_complete_fetcher.py
+class WalmartStoreDirectoryCompleteFetcher(RetailerFetcher):
+    """
+    Intelligent two-phase fetcher:
+    Phase 1: Fetch state page and extract city list
+    Phase 2: Fetch all city pages automatically
+    """
+    
+    def __init__(self, store_identification: dict, fetch_query: str, start_url: str,
+                 project_config, logger, **kwargs):
+        super().__init__(
+            retailer="Walmart",
+            store_identification=store_identification,
+            fetch_type="store-directory-complete",
+            fetch_query=fetch_query,  # State code like "tx"
+            start_url=start_url,
+            project_config=project_config,
+            logger=logger,
+            singleton=False,  # Multi-page fetch
+            **kwargs
+        )
+        
+        # Inline parser for immediate city extraction
+        self.state_parser = WalmartStoreDirectoryStateParser()
+    
+    async def fetch_all(self, start_url):
+        """
+        Two-phase fetch process:
+        1. Fetch state page
+        2. Parse cities immediately  
+        3. Fetch all city pages
+        """
+        
+        self.logger.info(f"🏛️ Starting complete store directory fetch for state: {self.fetch_query}")
+        
+        # Phase 1: Fetch state directory page
+        self.logger.info(f"📋 Phase 1: Fetching state directory page...")
+        state_result = await self.fetcher.fetch_single_url(
+            start_url, 
+            self.handle_state_result, 
+            page_num=1
+        )
+        
+        if not state_result or not state_result.get('success'):
+            self.logger.error("❌ Failed to fetch state directory page")
+            return
+        
+        # Phase 2: Parse state page to get city list
+        self.logger.info(f"🔍 Phase 2: Parsing state page to extract cities...")
+        cities = await self.extract_cities_from_state_page(state_result['filename'])
+        
+        if not cities:
+            self.logger.error("❌ No cities found in state directory page")
+            return
+            
+        self.logger.info(f"🏙️ Found {len(cities)} cities with Walmart stores")
+        
+        # Phase 3: Fetch all city directory pages
+        self.logger.info(f"🏪 Phase 3: Fetching store data for all {len(cities)} cities...")
+        await self.fetch_all_cities(cities)
+        
+        self.logger.info(f"✅ Complete store directory fetch finished!")
+    
+    async def extract_cities_from_state_page(self, state_filename):
+        """Parse the just-fetched state page to get city URLs"""
+        try:
+            # Read the HTML file we just saved
+            file_path = self.file_storage.get_file_path(state_filename)
+            html_content = self.file_storage.get_html_content(file_path)
+            
+            # Use the state parser to extract cities
+            mock_file_record = type('obj', (object,), {
+                'filename': state_filename,
+                'fetch_query': self.fetch_query
+            })
+            
+            parsed_result = self.state_parser.parse_html(html_content, mock_file_record)
+            
+            if parsed_result.get('success'):
+                return parsed_result['cities']
+            else:
+                self.logger.error(f"❌ Failed to parse cities: {parsed_result.get('error')}")
+                return []
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error extracting cities: {e}", exc_info=True)
+            return []
+    
+    async def fetch_all_cities(self, cities):
+        """Fetch all city directory pages"""
+        
+        # Optional: Add concurrency control
+        max_concurrent = self.project_config.get('store_directory', {}).get('max_concurrent_cities', 5)
+        semaphore = asyncio.Semaphore(max_concurrent)
+        
+        async def fetch_single_city(city_data, city_index):
+            async with semaphore:
+                city_name = city_data['city']
+                city_url = city_data['url']
+                
+                self.logger.info(f"🏪 Fetching city {city_index + 1}/{len(cities)}: {city_name}")
+                
+                try:
+                    result = await self.fetcher.fetch_single_url(
+                        city_url,
+                        self.handle_city_result,
+                        page_num=city_index + 2  # Start from page 2 (state was page 1)
+                    )
+                    
+                    if result and result.get('success'):
+                        self.logger.debug(f"✅ Successfully fetched {city_name}")
+                    else:
+                        self.logger.warning(f"⚠️ Failed to fetch {city_name}")
+                        
+                except Exception as e:
+                    self.logger.error(f"❌ Error fetching {city_name}: {e}")
+        
+        # Fetch all cities with controlled concurrency
+        tasks = [
+            fetch_single_city(city_data, i) 
+            for i, city_data in enumerate(cities)
+        ]
+        
+        await asyncio.gather(*tasks, return_exceptions=True)
+    
+    def handle_state_result(self, result: dict, page_num: int, is_retry: bool = False):
+        """Handle state directory page result"""
+        filename = None
+        if not result['error']:
+            # Custom filename for state page
+            filename = f"Walmart_store-directory-complete_{self.store_identification['retailer_store_id']}_{self.fetch_query}_state_page_{page_num}_{self.get_timestamp()}.html.gz"
+            self.file_storage.save_html(filename, result["html"], fetch_type=self.fetch_type)
+        
+        # Create FetchedFile record
+        fetched_file = self.create_fetched_file_record(
+            url=result.get('url', self.start_url),
+            filename=filename,
+            page_num=page_num,
+            result=result,
+            file_type='state'
+        )
+        
+        self.session.add_fetched_file(fetched_file)
+        return {'success': not result['error'], 'filename': filename}
+    
+    def handle_city_result(self, result: dict, page_num: int, is_retry: bool = False):
+        """Handle city directory page result"""
+        filename = None
+        if not result['error']:
+            # Extract city name from URL for filename
+            city_name = self.extract_city_from_url(result.get('url', ''))
+            filename = f"Walmart_store-directory-complete_{self.store_identification['retailer_store_id']}_{self.fetch_query}_{city_name}_page_{page_num}_{self.get_timestamp()}.html.gz"
+            self.file_storage.save_html(filename, result["html"], fetch_type=self.fetch_type)
+        
+        # Create FetchedFile record
+        fetched_file = self.create_fetched_file_record(
+            url=result.get('url', ''),
+            filename=filename,
+            page_num=page_num,
+            result=result,
+            file_type='city'
+        )
+        
+        self.session.add_fetched_file(fetched_file)
+        return {'success': not result['error'], 'filename': filename}
+Component Registration Update
+python
+# backend/components/walmart/forager/walmart_forager_component.py
+def create_fetcher(self, fetch_type: str, **kwargs) -> 'RetailerFetcher':
+    # ... existing logic ...
+    
+    elif fetch_type.lower() == "store-directory-complete":
+        return WalmartStoreDirectoryCompleteFetcher(
+            store_identification=kwargs.get('store_identification'),
+            fetch_query=kwargs.get('fetch_query'),  # State code (e.g., 'tx')
+            start_url=kwargs.get('start_url'),
+            project_config=self.project_config,
+            logger=self.logger,
+            **kwargs
+        )
+
+# backend/components/walmart/__init__.py
+metadata={
+    "supported_fetch_types": ["search", "search-retry", "store-directory-complete"],
+    # ... other metadata
+}
+Thresher Integration
+Create unified parser that handles both state and city files:
+
+python
+# backend/components/walmart/thresher/store_directory_complete_parser.py
+class WalmartStoreDirectoryCompleteParser(ParserStrategy):
+    """
+    Unified parser that processes all files from a store-directory-complete session:
+    - Parses state file to get city metadata
+    - Parses all city files to get store data
+    - Returns combined results
+    """
+    
+    def get_parser_type(self):
+        return "store-directory-complete"
+    
+    def parse_session_files(self, session_files, session_metadata):
+        """
+        Parse all files from a complete store directory session
+        
+        Args:
+            session_files: List of ORMFetchedFile objects
+            session_metadata: Session information
+        """
+        
+        state_files = [f for f in session_files if '_state_page_' in f.filename]
+        city_files = [f for f in session_files if '_state_page_' not in f.filename]
+        
+        self.logger.info(f"📊 Processing {len(state_files)} state files and {len(city_files)} city files")
+        
+        # Parse state file for metadata
+        state_data = {}
+        if state_files:
+            state_data = self.parse_state_file(state_files[0])
+        
+        # Parse all city files for store data
+        all_stores = []
+        for city_file in city_files:
+            city_stores = self.parse_city_file(city_file)
+            if city_stores.get('success'):
+                all_stores.extend(city_stores['stores'])
+        
+        return {
+            'success': True,
+            'state': state_data.get('state', session_metadata.fetch_query),
+            'total_cities_found': len(state_data.get('cities', [])),
+            'total_cities_fetched': len(city_files),
+            'total_stores': len(all_stores),
+            'stores': all_stores,
+            'state_metadata': state_data,
+            'parsed_from_session': session_metadata.fetcher_session_id
+        }
+Configuration Support
+Add configuration for concurrency control:
+
+toml
+# config/config.toml
+[Walmart.store_directory]
+max_concurrent_cities = 5        # Fetch max 5 cities simultaneously
+request_delay_ms = 1000         # 1 second delay between city requests
+timeout_seconds = 30            # Timeout per city request
+User Experience
+Simple CLI usage:
+
+bash
+# Get ALL store data for Texas with ONE command
+python -m backend.cli.forager_cli \
+  --retailer "Walmart" \
+  --retailer-store-id "1253" \
+  --fetch-type "store-directory-complete" \
+  --query "tx"
+
+# Parse everything with ONE command  
+python -m backend.cli.thresher_cli \
+  --session-id 12345 \
+  --parser-type "store-directory-complete"
+Expected output:
+
+One session with 100+ HTML files (1 state + ~99 cities for Texas)
+One parsed file with complete store data for the entire state
+Progress logging showing city-by-city fetch progress
+Error resilience - failed cities don't stop the entire process
+This approach reduces the user burden from potentially hundreds of commands down to just 50 (one per state), while still maintaining the flexibility and detailed logging that makes debugging possible.
+
+
+
+
+Retry
+Also, I think thresher output should always be parquet files in the data lake, similar to what we do with search files now.  In the future, we will work on the "stockpiler" engine to create components for data pipelines which can be orchestrated by something like AirFlow or GCP CloudFlow; in this case, the source would be the raw store directory parquet files in the data lake, and the target would be the stores table in the database.  Forager is responsible for retrieving data from a target; thresher is responsible for parsing the important information out of the raw forager data, transforming the purely raw forager data into a more usable format; stockpiler will be about refining the thresher data into a form that is useful for analytical and operational use cases.
+
+Edit
+
+Mapped out data pipeline architecture for Reaper's store retrieval.
+5s
+
+
+
+
+
+
+Perfect! That's an excellent architectural clarification. You're establishing a clean Extract → Transform → Load pipeline:
+
+Revised Data Pipeline Architecture
+Three-Stage Pipeline
+Forager (Extract): Raw data retrieval
+Input: Target URLs
+Output: Raw HTML files
+Responsibility: Fetch data from external sources
+Thresher (Transform): Data parsing & structuring
+Input: Raw HTML files
+Output: Structured Parquet files in data lake
+Responsibility: Parse, validate, structure raw data
+Stockpiler (Load): Data refinement & persistence
+Input: Structured Parquet files
+Output: Database tables, analytics views
+Responsibility: Load data for operational/analytical use
+Store Directory Thresher Output
+Focus on structured Parquet generation, not database persistence:
+
+python
+# backend/components/walmart/thresher/store_directory_complete_parser.py
+class WalmartStoreDirectoryCompleteParser(ParserStrategy):
+    """
+    Parses store directory files and outputs structured Parquet files.
+    Does NOT touch the database - that's Stockpiler's job.
+    """
+    
+    def parse_session_files(self, session_files, session_metadata):
+        """
+        Parse all store directory files into clean, structured data
+        Output: Parquet file ready for data lake
+        """
+        
+        # Parse state and city files
+        state_data, all_stores = self.extract_store_data(session_files)
+        
+        # Create structured DataFrame
+        stores_df = self.build_stores_dataframe(all_stores, state_data, session_metadata)
+        
+        # Data validation and quality checks
+        validated_df = self.validate_store_data(stores_df)
+        
+        # Generate Parquet filename
+        parquet_filename = self.generate_parquet_filename(session_metadata)
+        
+        # Save to data lake
+        parquet_path = self.save_to_parquet(validated_df, parquet_filename)
+        
+        return {
+            'success': True,
+            'parquet_file': parquet_filename,
+            'parquet_path': parquet_path,
+            'total_stores': len(validated_df),
+            'data_quality_summary': self.get_quality_summary(validated_df),
+            'processing_metadata': {
+                'state': state_data.get('state'),
+                'cities_processed': len([f for f in session_files if '_state_page_' not in f.filename]),
+                'parsed_timestamp': datetime.utcnow().isoformat(),
+                'source_session_id': session_metadata.fetcher_session_id
+            }
+        }
+    
+    def build_stores_dataframe(self, all_stores, state_data, session_metadata):
+        """
+        Build clean DataFrame with consistent schema for data lake
+        """
+        
+        # Standardized schema for store directory Parquet files
+        structured_data = []
+        
+        for store in all_stores:
+            store_record = {
+                # Core identifiers
+                'retailer': 'Walmart',
+                'retailer_store_id': store.get('store_id'),
+                'fetcher_session_id': session_metadata.fetcher_session_id,
+                'fetch_date': session_metadata.start_time.date() if session_metadata.start_time else None,
+                'parsed_date': datetime.utcnow().date(),
+                
+                # Store information
+                'store_display_name': store.get('store_display_name'),
+                'store_brand_format': store.get('store_brand_format'),
+                'store_phone': store.get('store_phone'),
+                
+                # Address
+                'store_address': store.get('store_address'),
+                'store_address_line_two': store.get('store_address_line_two'),
+                'store_city': store.get('store_city'),
+                'store_state': store.get('store_state'),
+                'store_zip_code': store.get('store_zip_code'),
+                'store_country': store.get('store_country'),
+                'store_country_code': store.get('store_country_code'),
+                
+                # Geographic
+                'store_latitude': store.get('store_latitude'),
+                'store_longitude': store.get('store_longitude'),
+                'store_time_zone': store.get('store_time_zone'),
+                
+                # Capabilities
+                'store_is_open_24h': store.get('store_is_open_24h'),
+                'store_is_glass_eligible': store.get('store_is_glass_eligible'),
+                
+                # JSON fields for complex data
+                'store_services': json.dumps(store.get('store_services', [])),
+                'store_capabilities': json.dumps(store.get('store_capabilities', [])),
+                'store_operational_hours': json.dumps(store.get('store_operational_hours', [])),
+                
+                # Derived fields
+                'store_url': store.get('store_url'),
+                'has_pharmacy': 'Pharmacy' in str(store.get('store_services', [])),
+                'has_fuel': 'Gas' in str(store.get('store_services', [])) or 'Murphy' in str(store.get('store_services', [])),
+                'has_grocery_pickup': 'Grocery Pickup' in str(store.get('store_services', [])),
+                
+                # Source tracking
+                'source_city_url': store.get('source_city_url'),
+                'source_file': store.get('source_file')
+            }
+            
+            structured_data.append(store_record)
+        
+        return pd.DataFrame(structured_data)
+    
+    def validate_store_data(self, df):
+        """
+        Data quality validation for store directory data
+        """
+        
+        validation_results = {
+            'total_records': len(df),
+            'missing_store_id': df['retailer_store_id'].isna().sum(),
+            'missing_coordinates': df[['store_latitude', 'store_longitude']].isna().any(axis=1).sum(),
+            'missing_address': df['store_address'].isna().sum(),
+            'invalid_phone': 0,  # Could add phone format validation
+            'duplicate_store_ids': df['retailer_store_id'].duplicated().sum()
+        }
+        
+        # Log validation results
+        self.logger.info(f"📊 Data Quality Summary: {validation_results}")
+        
+        # Could add data cleaning here
+        # e.g., df = df.dropna(subset=['retailer_store_id'])
+        
+        return df
+    
+    def generate_parquet_filename(self, session_metadata):
+        """
+        Generate consistent Parquet filename for data lake
+        Pattern: parsed_Walmart_store-directory-complete_{store_id}_{state}_{session_id}_{fetch_date}.parquet
+        """
+        
+        fetch_date = session_metadata.start_time.strftime('%Y%m%d') if session_metadata.start_time else 'unknown'
+        
+        return (
+            f"parsed_Walmart_store-directory-complete_"
+            f"{session_metadata.store_id}_"
+            f"{session_metadata.fetch_query}_"
+            f"session_{session_metadata.fetcher_session_id}_"
+            f"{fetch_date}.parquet"
+        )
+    
+    def save_to_parquet(self, df, filename):
+        """
+        Save DataFrame to Parquet in data lake with partitioning
+        """
+        
+        # Add partitioning columns for data lake optimization
+        df['fetch_year'] = pd.to_datetime(df['fetch_date']).dt.year
+        df['fetch_month'] = pd.to_datetime(df['fetch_date']).dt.month
+        df['retailer_partition'] = df['retailer']
+        
+        # Save to configured data lake location
+        parsed_save_location = self.project_config.get('parsed_save_location')
+        parquet_path = os.path.join(parsed_save_location, 'Walmart', 'store-directory-complete', filename)
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(parquet_path), exist_ok=True)
+        
+        # Save with optimization for analytics
+        df.to_parquet(
+            parquet_path,
+            engine='pyarrow',
+            compression='snappy',
+            index=False
+        )
+        
+        self.logger.info(f"💾 Saved store directory data to: {parquet_path}")
+        return parquet_path
+Data Lake Structure
+Organized Parquet files for analytics consumption:
+
+/data/parsed/
+├── Walmart/
+│   ├── search/                    # Product search results
+│   │   └── parsed_Walmart_search_1253_iphone_session_12345_20250109.parquet
+│   └── store-directory-complete/  # Store directory data
+│       ├── parsed_Walmart_store-directory-complete_1253_tx_session_12346_20250109.parquet
+│       ├── parsed_Walmart_store-directory-complete_1253_ca_session_12347_20250109.parquet
+│       └── parsed_Walmart_store-directory-complete_1253_ny_session_12348_20250109.parquet
+└── Target/                        # Future retailer expansion
+    └── store-directory-complete/
+Future Stockpiler Integration
+Stockpiler will consume these Parquet files:
+
+python
+# Future: backend/engines/stockpiler/store_directory_loader.py
+class StoreDirectoryLoader:
+    """
+    Loads store directory Parquet files into database tables
+    Handles deduplication, format mapping, relationship creation
+    """
+    
+    def load_store_parquet_to_database(self, parquet_file):
+        """
+        Load store data from Parquet → stores table
+        Handle StoreFormat mapping, deduplication, etc.
+        """
+        
+        # Read Parquet file
+        df = pd.read_parquet(parquet_file)
+        
+        # Map store formats to format_id
+        df = self.map_store_formats(df)
+        
+        # Handle upserts for existing stores
+        self.upsert_stores_to_database(df)
+        
+        # Update last_updated timestamps
+        self.update_store_metadata(df)
+Benefits of This Architecture
+Clean Separation: Each engine has single responsibility
+Data Lake First: Structured data available for multiple consumers
+Testability: Thresher output is pure data transformation
+Scalability: Parquet files can be processed by various tools
+Auditability: Full data lineage from HTML → Parquet → Database
+Flexibility: Different downstream systems can consume Parquet files
+CLI Output Example
+thresher_cli produces Parquet files, not database changes:
+
+bash
+python -m backend.cli.thresher_cli \
+  --session-id 12346 \
+  --parser-type "store-directory-complete"
+
+# Output:
+# ✅ Parsed 127 city files + 1 state file
+# 📊 Found 847 stores across Texas  
+# 💾 Saved to: /data/parsed/Walmart/store-directory-complete/parsed_Walmart_store-directory-complete_1253_tx_session_12346_20250109.parquet
+# 🎯 Ready for Stockpiler consumption
+This architecture keeps the thresher focused on data transformation while setting up clean handoff points for the future Stockpiler engine to handle database operations and analytics preparation.
+
+
+
+
+Retry
+Have you familiarized yourself with all the code in reaper.backend.engines.thresher, and reaper.backend.components.walmart.thresher?
+
+Edit
+
+Thinking about familiarity with specific code modules in reaper backend
+1s
+
+
+
+Searched project for “backend.engines.thresher complete architecture components implementation”
+4 results
+
+
+
+
+
+
+
+
+Investigating thresher system's core engine architecture components
+6s
+
+
+
+
+
+
+
+
+Searched project for “backend.components.walmart.thresher parser strategy complete implementation”
+6 results
+
+
+
+
+
+
+
+
+
+
+Dissected thresher architecture, mapped component-based system evolution.
+7s
+
+
+
+
+
+
+Yes, I'm now familiar with the comprehensive thresher architecture in Reaper. Let me summarize the key components:
+
+Current Thresher Architecture
+Core Engine (backend.engines.thresher)
+Main Orchestration:
+
+thresher_engine.py - Dependency-injected orchestration engine
+engine.py - Core execute_thresh() function with backward compatibility
+thresher_factory.py - Component-based factory with O(1) component lookup
+Strategy Pattern & Parsing:
+
+parser_strategy.py - Abstract base class for parser strategies
+parser.py - Now imports from components for backward compatibility
+validator.py - Data quality validation with configurable rules
+file_namer.py - Consistent Parquet file naming
+Domain & Error Handling:
+
+domain.py - ThresherResult, ParsedBatch, ValidationResult models
+exceptions.py - Comprehensive error handling with context
+Component Implementation (backend.components.walmart.thresher)
+Component Architecture:
+
+walmart_thresher_component.py - Main component class implementing ThresherComponent interface
+search_parser.py - Walmart search parser (moved from core engine)
+Component registration - Auto-registered in ComponentRegistry for O(1) lookup
+Key Architecture Patterns
+1. Component-Based with Legacy Fallback:
+
+python
+# ThresherFactory uses component registry first, legacy fallback second
+thresher_component = self.registry.get_component(retailer, "thresher")
+parser = thresher_component.create_parser(parser_type)
+2. Strategy Pattern for Parsers:
+
+python
+class WalmartSearchParser(ParserStrategy):
+    def parse(self, html_content: str, file_record: FetchedFile) -> pd.DataFrame
+    def get_supported_retailer(self) -> str
+    def get_supported_fetch_type(self) -> str
+3. Dependency Injection Engine:
+
+python
+engine = ThresherEngine(
+    file_storage=file_storage,
+    db_session=db_session, 
+    logger=logger,
+    config=project_config
+)
+4. Data Lake Output (Parquet Focus):
+
+Parquet files generated with fetch-date partitioning
+Comprehensive data validation and quality checks
+No direct database persistence (that's for future Stockpiler)
+Store Directory Integration Strategy
+Given this architecture, here's how we should integrate the store directory parsers:
+
+1. Add New Parser Strategies
+Create in backend.components.walmart.thresher:
+
+store_directory_state_parser.py - State page parser
+store_directory_city_parser.py - City page parser
+store_directory_complete_parser.py - Unified parser for complete sessions
+2. Register in WalmartThresherComponent
+python
+def create_parser(self, parser_type: str, **kwargs):
+    """Enhanced to support store directory parsers"""
+    
+    if parser_type == "search":
+        from .search_parser import WalmartSearchParser
+        return WalmartSearchParser()
+    elif parser_type == "store-directory-complete":
+        from .store_directory_complete_parser import WalmartStoreDirectoryCompleteParser
+        return WalmartStoreDirectoryCompleteParser()
+    elif parser_type == "store-directory-state":
+        from .store_directory_state_parser import WalmartStoreDirectoryStateParser
+        return WalmartStoreDirectoryStateParser()
+    elif parser_type == "store-directory-city":
+        from .store_directory_city_parser import WalmartStoreDirectoryCityParser
+        return WalmartStoreDirectoryCityParser()
+    else:
+        raise ValueError(f"Unsupported parser type: {parser_type}")
+3. Follow Existing Patterns
+Parser Structure (following search_parser.py pattern):
+
+python
+class WalmartStoreDirectoryCompleteParser(ParserStrategy):
+    def get_supported_retailer(self) -> str:
+        return "Walmart"
+    
+    def get_supported_fetch_type(self) -> str:
+        return "store-directory-complete"
+    
+    def parse(self, html_content: str, file_record: FetchedFile) -> pd.DataFrame:
+        # Use PoC logic to extract store data
+        # Return structured DataFrame for Parquet generation
+ThresherEngine Integration (automatic):
+
+Engine will discover parsers through component system
+Validation, file naming, Parquet generation all handled automatically
+No changes needed to core engine
+4. CLI Integration
+thresher_cli will work automatically:
+
+bash
+python -m backend.cli.thresher_cli \
+  --session-id 12346 \
+  --parser-type "store-directory-complete"
+The existing ThresherEngine and ThresherFactory will handle:
+
+Component discovery for Walmart store directory parser
+File processing and validation
+Parquet generation with proper naming
+Error handling and logging
+This approach leverages the existing sophisticated architecture while adding the new store directory functionality seamlessly. The component system ensures clean separation and the factory pattern provides automatic discovery without modifying core engine code.
+
+
+
+
+Retry
+great!  Also, make sure you are completely familiar with reaper.backend.engines.forager and reaper.backend.components.walmart.forager.  Let's make absolutely sure we're sticking with established patterns with changes we're proposing for new fetch types.
+
+Edit
+
+Scrutinizing forager architecture for consistent implementation patterns
+1s
+
+
+
+
+Searched project for “backend.engines.forager complete architecture components fetchers implementation patterns”
+4 results
+
+
+
+
+
+
+
+
+Now I need to get more detailed information about the forager engine structure and the Walmart
+1s
+
+
+
+Searched project for “backend.components.walmart.forager fetcher implementations header builder paginator response analyzer patterns”
+6 results
+
+
+
+
+
+
+
+
+
+
+Now I have a much better understanding of the established patterns.
+1s
+
+
+
+Searched project for “paginator response_analyzer file_namer forager patterns WalmartPaginator WalmartSearchResponseAnalyzer”
+6 results
+
+
+
+
+
+
+
+
+
+
+
+
+Retry
+
+
+
+
+
+
+
+
+
+
+
+
+
+Reaper Project Development - Claude

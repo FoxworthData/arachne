@@ -1,0 +1,14 @@
+- query: "Eggs"
+  search_url: "https://www.walmart.com/search?q=eggs"
+
+- query: "tomatoes"
+  search_url: "https://www.walmart.com/browse/food/tomatoes/976759_976793_8910423_1819145"
+
+- query: "fresh berries"
+  search_url: "https://www.walmart.com/search?q=fresh+berries"
+
+- query: "avocados"
+  search_url: "https://www.walmart.com/search?q=avocados"
+
+- query: "rollbacks - food"
+  search_url: "https://www.walmart.com/shop/deals/food/rollbacks?povid=WinterRollbacks_facet_Food&facet=special_offers%3ARollback"

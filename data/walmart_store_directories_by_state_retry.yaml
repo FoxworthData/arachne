@@ -1,0 +1,4 @@
+- state: tx
+  cities:
+  - city: Waco
+    url: https://www.walmart.com/store-directory/tx/waco

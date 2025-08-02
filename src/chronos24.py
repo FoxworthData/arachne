@@ -1,0 +1,92 @@
+import os
+
+import requests
+
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+
+
+cookies = {
+    'chronosessid': '59d050c0-9580-46a2-929b-5b7e8046e34a',
+    'filter-combinations': '1:Man,0:',
+    'csrf-token': '1750873138.kjVKxVhnuhzwHM-cJePm0K8uBSc3JdBQDjwjaMTqyU0.AXG1VdibBGy9lHJuvCJVXLZtwhpn',
+    'cfctGroup': 'AAAESIV00%3D%26TCRTII01%3D%26CDCO01%3D%26LTRS00%3D%26AAAISIV00%3D',
+    '__cflb': '0H28vBCZxXf5QcKQeSUz1bT3jumYpMsK3TxtJri7QqA',
+    'timezone': 'America/Chicago',
+    '__ssid': '6f38d0544dba3ec0a01f68fce9ca2ae',
+    'lastRskxRun': '1750873140681',
+    'rskxRunCookie': '0',
+    'rCookie': 'gueldyqi84kqjxa6ezswbqmcc8ntmy',
+    'c24-consent': 'AAEAJo/nwEhO',
+    'c24-data': 'eyIyMzIiOnsiZSI6IjE3ODI0MDkxNDEiLCJ2IjoiMTc1MDg3MzEzOTA0OSJ9LCIzNiI6eyJlIjoiMTc4MjQwOTEzOCIsInYiOiIxNzUwODczMTM4Njg5In0sIjQ2NSI6eyJlIjoiMTg0NTQ4MTE0MiIsInYiOiIxODQ1NDgxMTQyOTA3In0sIjM3Ijp7ImUiOiIxNzgyNDA5MTM4IiwidiI6IjE3NTA4NzMxMzg2ODkifSwiNSI6eyJlIjoiMTc1MzQ2NTE0MyIsInYiOiIzIn0sIjI3Ijp7ImUiOiIxNzgyNDA5MTM4IiwidiI6IjEifSwiMzgiOnsiZSI6IjE3ODI0MDkxMzgiLCJ2IjoiMTc0ODE5NDczODY4OSJ9LCIxMTUiOnsiZSI6IjE3NjY0MjUxNDAiLCJ2IjoibGcifSwiNiI6eyJlIjoiMTc1MzQ2NTE0MyIsInYiOiIzIn0sIjQxIjp7ImUiOiIxNzgyNDA5MTM4IiwidiI6IjE3NTA4NzMxMzgwMDAifSwiOTgiOnsiZSI6IjE3ODI0MDkxNDMiLCJ2IjoiMyJ9fQ==',
+    'last-search-result-ids': '41021143.41113958.41135137.41111846.38709578.39184564.40708879.40855418.41000857.40773459.40884461.34879196.38689626.40936019.36091299.40711598.41017358.41012948.40616428.41151461.41002715.40724782.40417083.39035263.35733142.38656635.40586357.34895790.38358648.40080099.40550670.39256789.39315600.26475877.40307752.38105884.40574476.40974957.40855455.39105254.40655680.40324204.40884357.38899267.38986311.39181916.37904140.40840713.38878868.40456611.38804848.39184521.38641810.40555765.40708207.39467129.40360548.39181723.40463035.40835614',
+    'catalog-switcher-state': 'listings',
+    'catalog-switcher-hint': 'catalogSwitchHintDisplayed',
+    '_ga_B8CPBTKGPW': 'GS2.1.s1750873143$o1$g0$t1750873143$j60$l0$h660537393',
+    '_ga': 'GA1.1.566637698.1750873144',
+    '_fbp': 'fb.1.1750873143634.67016769358054055',
+    '_hjSessionUser_72519': 'eyJpZCI6IjAzYzc3MjlmLTY3NTQtNWVjYS05MTc2LWJlZDFmMjI5YzU5ZSIsImNyZWF0ZWQiOjE3NTA4NzMxNDQwNDIsImV4aXN0aW5nIjpmYWxzZX0=',
+    '_hjSession_72519': 'eyJpZCI6IjBiZmRlMmE2LTc4MTYtNGI0OC04M2RjLTViYmRiMDhmOTgzYSIsImMiOjE3NTA4NzMxNDQwNDMsInMiOjAsInIiOjAsInNiIjowLCJzciI6MCwic2UiOjAsImZzIjoxLCJzcCI6MX0=',
+    'FPID': 'FPID2.2.1%2Fw6HbXKORl0iuL085IDbh8P0Qjg%2FR%2FdNd4zVqm5Lf4%3D.1750873144',
+    'FPLC': 'sFPo7pDZXte%2FStls92gTIKN%2B9yHiYYq5SU%2B1Qx1zBsfrsco%2B6TFHCO%2FBszxaDnEmxf8AIz3r6%2FZcOqOd5p8FkCbiItuQmYcabbcGmN%2BGScQJpYBA04rzFTFO8v0Gsg%3D%3D',
+    'FPAU': '1.2.2109597400.1750873144',
+    'FPGSID': '1.1750873144.1750873144.G-B8CPBTKGPW.nSMyfxMj7o6f6KRwCL-mhA',
+}
+
+headers = {
+    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'accept-language': 'en-US,en;q=0.9',
+    'cache-control': 'no-cache',
+    'pragma': 'no-cache',
+    'priority': 'u=0, i',
+    'sec-ch-ua': '"Google Chrome";v="137", "Chromium";v="137", "Not/A)Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"macOS"',
+    'sec-fetch-dest': 'document',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-site': 'none',
+    'sec-fetch-user': '?1',
+    'upgrade-insecure-requests': '1',
+    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+    # 'cookie': 'chronosessid=59d050c0-9580-46a2-929b-5b7e8046e34a; filter-combinations=1:Man,0:; csrf-token=1750873138.kjVKxVhnuhzwHM-cJePm0K8uBSc3JdBQDjwjaMTqyU0.AXG1VdibBGy9lHJuvCJVXLZtwhpn; cfctGroup=AAAESIV00%3D%26TCRTII01%3D%26CDCO01%3D%26LTRS00%3D%26AAAISIV00%3D; __cflb=0H28vBCZxXf5QcKQeSUz1bT3jumYpMsK3TxtJri7QqA; timezone=America/Chicago; __ssid=6f38d0544dba3ec0a01f68fce9ca2ae; lastRskxRun=1750873140681; rskxRunCookie=0; rCookie=gueldyqi84kqjxa6ezswbqmcc8ntmy; c24-consent=AAEAJo/nwEhO; c24-data=eyIyMzIiOnsiZSI6IjE3ODI0MDkxNDEiLCJ2IjoiMTc1MDg3MzEzOTA0OSJ9LCIzNiI6eyJlIjoiMTc4MjQwOTEzOCIsInYiOiIxNzUwODczMTM4Njg5In0sIjQ2NSI6eyJlIjoiMTg0NTQ4MTE0MiIsInYiOiIxODQ1NDgxMTQyOTA3In0sIjM3Ijp7ImUiOiIxNzgyNDA5MTM4IiwidiI6IjE3NTA4NzMxMzg2ODkifSwiNSI6eyJlIjoiMTc1MzQ2NTE0MyIsInYiOiIzIn0sIjI3Ijp7ImUiOiIxNzgyNDA5MTM4IiwidiI6IjEifSwiMzgiOnsiZSI6IjE3ODI0MDkxMzgiLCJ2IjoiMTc0ODE5NDczODY4OSJ9LCIxMTUiOnsiZSI6IjE3NjY0MjUxNDAiLCJ2IjoibGcifSwiNiI6eyJlIjoiMTc1MzQ2NTE0MyIsInYiOiIzIn0sIjQxIjp7ImUiOiIxNzgyNDA5MTM4IiwidiI6IjE3NTA4NzMxMzgwMDAifSwiOTgiOnsiZSI6IjE3ODI0MDkxNDMiLCJ2IjoiMyJ9fQ==; last-search-result-ids=41021143.41113958.41135137.41111846.38709578.39184564.40708879.40855418.41000857.40773459.40884461.34879196.38689626.40936019.36091299.40711598.41017358.41012948.40616428.41151461.41002715.40724782.40417083.39035263.35733142.38656635.40586357.34895790.38358648.40080099.40550670.39256789.39315600.26475877.40307752.38105884.40574476.40974957.40855455.39105254.40655680.40324204.40884357.38899267.38986311.39181916.37904140.40840713.38878868.40456611.38804848.39184521.38641810.40555765.40708207.39467129.40360548.39181723.40463035.40835614; catalog-switcher-state=listings; catalog-switcher-hint=catalogSwitchHintDisplayed; _ga_B8CPBTKGPW=GS2.1.s1750873143$o1$g0$t1750873143$j60$l0$h660537393; _ga=GA1.1.566637698.1750873144; _fbp=fb.1.1750873143634.67016769358054055; _hjSessionUser_72519=eyJpZCI6IjAzYzc3MjlmLTY3NTQtNWVjYS05MTc2LWJlZDFmMjI5YzU5ZSIsImNyZWF0ZWQiOjE3NTA4NzMxNDQwNDIsImV4aXN0aW5nIjpmYWxzZX0=; _hjSession_72519=eyJpZCI6IjBiZmRlMmE2LTc4MTYtNGI0OC04M2RjLTViYmRiMDhmOTgzYSIsImMiOjE3NTA4NzMxNDQwNDMsInMiOjAsInIiOjAsInNiIjowLCJzciI6MCwic2UiOjAsImZzIjoxLCJzcCI6MX0=; FPID=FPID2.2.1%2Fw6HbXKORl0iuL085IDbh8P0Qjg%2FR%2FdNd4zVqm5Lf4%3D.1750873144; FPLC=sFPo7pDZXte%2FStls92gTIKN%2B9yHiYYq5SU%2B1Qx1zBsfrsco%2B6TFHCO%2FBszxaDnEmxf8AIz3r6%2FZcOqOd5p8FkCbiItuQmYcabbcGmN%2BGScQJpYBA04rzFTFO8v0Gsg%3D%3D; FPAU=1.2.2109597400.1750873144; FPGSID=1.1750873144.1750873144.G-B8CPBTKGPW.nSMyfxMj7o6f6KRwCL-mhA',
+}
+
+params = {
+    'man': 'rolex',
+    'showpage': '',
+    'catalogProductList': 'false',
+}
+
+def get_proxies():
+    proxy_user = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_USER")
+    proxy_pass = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_PASSWORD")
+
+    # proxy_user = os.getenv("BRIGHTDATA_DATACENTER_PROXY_USER")
+    # proxy_pass = os.getenv("BRIGHTDATA_DATACENTER_PROXY_PASSWORD")
+
+    proxy_host = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_HOST")
+    proxy_port = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_PORT")
+
+    proxies = {'http': f'http://{proxy_user}:{proxy_pass}@{proxy_host}:{proxy_port}',
+                'https': f'http://{proxy_user}:{proxy_pass}@{proxy_host}:{proxy_port}'}
+    return proxies
+
+def get_proxy(proxy_type: str = 'http'):
+    proxies = get_proxies()
+    return proxies.get(proxy_type, proxies[proxy_type])
+
+
+response = requests.get('https://www.chrono24.com/rolex/index.htm',
+                        params=params,
+                        cookies=cookies,
+                        headers=headers,
+                        proxies=get_proxies(),
+                        verify=False
+                        )
+
+# Save response text to a file
+with open('response_output.html', 'w', encoding='utf-8') as file:
+    file.write(response.text)
