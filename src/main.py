@@ -28,13 +28,14 @@ async def main():
     # Eggs, tomatoes, avocados, fresh berries, rollbacks - food
 
     retailer = 'Walmart'
-    store_id = '5145'
+    store_id = '1198'
 
-    # fetch_type = 'search'
-    # query = 'tomatoes'
+    fetch_type = 'search'
+    query = 'Eggs'
 
-    fetch_type = 'store-directory'
-    query = 'la'
+    # fetch_type = 'store-directory'
+    # fetch_type = 'product'
+    # query = 'la'
 
     store_identification = load_store_by_id(store_id=store_id)
     logger.info(store_identification)
@@ -64,7 +65,7 @@ async def main():
         query = fetch_type
         logger.info(f"Retailer: {retailer} Store: {store_id} Fetch Type: {fetch_type} Query: {query}")
 
-        random_entries = get_random_products()
+        random_entries = get_random_products(n=100)
         urls = []
         for entry in random_entries:
             urls.append(entry.get('canonical_url'))

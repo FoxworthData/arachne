@@ -560,7 +560,12 @@ class AdvancedAiohttpFetcher:
                 
                 self.logger.debug(f"🌐 [Fetch] Attempt {retries + 1}/{self.max_retries + 1} for {url}")
                 self.logger.debug(f"🎭 [Fetch] Using persona: {self.persona.persona_id}")
-                
+
+                # self.logger.info("--- HEADERS AIOHTTP IS SENDING ---")
+                # for key, value in headers.items():
+                #     self.logger.info(f"  {key}: {value}")
+                # self.logger.info("-------------------------------------")
+
                 async with session.get(
                     url,
                     headers=headers,
@@ -864,9 +869,9 @@ async def main():
     
     # Configuration (similar to main.py)
     retailer = 'Walmart'
-    store_id = '5145'
+    store_id = '1198'
     fetch_type = 'search'
-    query = 'eggs'  # Simple query for testing
+    query = 'Milk'  # Simple query for testing
     
     # Load configuration using existing utilities with absolute paths
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
