@@ -43,7 +43,7 @@ class WalmartHeaderBuilder(RetailerHeaderBuilder):
     def location_cookie(self):
         "Builds a cookie string for the specified store ID and zip code."
         acid = str(uuid.uuid4())
-        acid = 'da6245c7-0a44-41f2-a733-731749b1af0f'
+        # acid = 'da6245c7-0a44-41f2-a733-731749b1af0f'
 
         address_timestamp = int(time.time())*1000
         deliveryStoreList_timestamp = int(time.time())*1000

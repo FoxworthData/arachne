@@ -1,3 +1,5 @@
+import re
+
 
 async def walmart_response_analyzer(response, url, headers, logger, store_identification, check_store_identification: bool = True):
     text = await response.text()
@@ -26,6 +28,17 @@ async def walmart_response_analyzer(response, url, headers, logger, store_identi
             logger.info(f"✅ Store ID {store_identification['store_id']} found in response.")
         else:
             logger.warning(f"⚠️ Store ID {store_identification['store_id']} not found in response.")
+
+            # --- Start of new code ---
+            # Use regex to find what store ID *is* in the text
+            match = re.search(r'"storeId":"(\d+)"', text)
+            if match:
+                found_id = match.group(1)  # Extracts the number from the pattern
+                logger.warning(f"Found store ID '{found_id}' instead.")
+            else:
+                logger.warning("No 'storeId' pattern found in the HTML response.")
+            # --- End of new code ---
+
             raise ValueError(f"Store ID {store_identification['store_id']} not found in response for url: {url}.")
             # return {"success": False, "reason": "Store ID not found in response."}
 

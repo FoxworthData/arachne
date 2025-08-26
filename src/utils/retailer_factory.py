@@ -57,7 +57,8 @@ class RetailerBundle:
             get_headers=self.get_headers,
             get_proxy=self.get_proxy,
             response_analyzer=walmart_response_analyzer,
-            check_store_identification=fetch_type not in ['store-directory', 'store-directory-by-state']
+            check_store_identification=fetch_type not in ['store-directory', 'store-directory-by-state'],
+            max_retries=5
         )
 
         self.session = FetcherSession(

@@ -59,20 +59,37 @@ except ImportError:
     from utils.config_loader import ConfigLoader
 
 import aiohttp
+from playwright.async_api import async_playwright
 
 
-def get_proxies():
+def get_store_state(store_id: str) -> str:
+    """Get the state for a given Walmart store ID to enable geographic targeting."""
+    # Common Walmart store ID to state mapping
+    store_state_map = {
+        '1198': 'TX',  # San Antonio Supercenter
+        '5055': 'NY',  # New York area
+        # Add more as needed
+    }
+    return store_state_map.get(store_id, 'TX')  # Default to TX
+
+
+def get_proxies(store_id: str = '1198'):
     proxy_user = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_USER")
     proxy_pass = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_PASSWORD")
     proxy_host = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_HOST")
     proxy_port = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_PORT")
 
-    proxies = {'http': f'http://{proxy_user}:{proxy_pass}@{proxy_host}:{proxy_port}',
-                'https': f'http://{proxy_user}:{proxy_pass}@{proxy_host}:{proxy_port}'}
+    # Add geographic targeting based on store location
+    # This prevents STORE_ID_MISMATCH errors due to geographic IP inconsistency
+    target_state = get_store_state(store_id)
+    proxy_user_with_targeting = f"{proxy_user}-country-US-state-{target_state}"
+    
+    proxies = {'http': f'http://{proxy_user_with_targeting}:{proxy_pass}@{proxy_host}:{proxy_port}',
+                'https': f'http://{proxy_user_with_targeting}:{proxy_pass}@{proxy_host}:{proxy_port}'}
     return proxies
 
-def get_proxy(proxy_type: str = 'http'):
-    proxies = get_proxies()
+def get_proxy(proxy_type: str = 'http', store_id: str = '1198'):
+    proxies = get_proxies(store_id)
     return proxies.get(proxy_type, proxies[proxy_type])
 
 
@@ -99,19 +116,24 @@ class BrowserPersona:
             return f"chrome-win-{ua_hash}"
         elif "Chrome" in user_agent and "Macintosh" in user_agent:
             return f"chrome-mac-{ua_hash}"
-        elif "Safari" in user_agent and "Macintosh" in user_agent:
-            return f"safari-mac-{ua_hash}"
+        elif "Chrome" in user_agent and "Linux" in user_agent:
+            return f"chrome-linux-{ua_hash}"
         else:
             return f"unknown-{ua_hash}"
 
 
 class BrowserPersonaChooser:
     """
-    Browser persona management, contains curated, tested browser personas for maximum bot evasion.
+    Browser persona management, contains curated Chrome personas for maximum bot evasion.
+    
+    Note: Only Chrome personas are used because Playwright only supports Chromium engines.
+    Using Safari/Firefox personas with Chromium would create header/runtime mismatches
+    that can be detected as bot behavior by anti-bot systems.
     """
     
     def __init__(self):
-        # Curated personas based on successful bot evasion testing
+        # Curated Chrome personas only - compatible with Playwright's Chromium engine
+        # Safari personas removed due to header/runtime mismatch causing bot detection
         self._personas_data = [
             # Chrome Windows - High success rate
             {
@@ -143,20 +165,20 @@ class BrowserPersonaChooser:
                 "viewport_width": 1440,
                 "viewport_height": 900
             },
-            # Safari macOS - High success rate
+            # Chrome Linux - Added for additional variety while maintaining Chromium compatibility
             {
-                "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15",
-                "sec_ch_ua": '"Safari";v="17", "Not.A/Brand";v="24"',
+                "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+                "sec_ch_ua": '"Google Chrome";v="137", "Chromium";v="137", "Not.A/Brand";v="24"',
                 "sec_ch_ua_mobile": "?0",
-                "sec_ch_ua_platform": '"macOS"',
+                "sec_ch_ua_platform": '"Linux"',
                 "device_specs": {
-                    "downlink": "9.8",
-                    "dpr": "2", 
-                    "rtt": "45",
+                    "downlink": "9.2",
+                    "dpr": "1",
+                    "rtt": "75",
                     "ect": "4g"
                 },
-                "viewport_width": 1440,
-                "viewport_height": 900
+                "viewport_width": 1920,
+                "viewport_height": 1080
             }
         ]
     
@@ -180,7 +202,12 @@ class BrowserPersonaChooser:
 class RealCookieSeeder:
     """
     Real cookie seeding system that harvests authentic cookies from actual Walmart sessions.
-    This demonstrates how to properly seed browser fingerprints with genuine session data.
+    Uses PLAYWRIGHT for cookie harvesting to capture JavaScript-generated cookies,
+    then provides those cookies to aiohttp for actual search requests.
+    
+    This hybrid approach solves STORE_ID_MISMATCH errors by:
+    - Using Playwright to wait for JavaScript execution and harvest dynamic cookies
+    - Using aiohttp for fast, efficient search request execution with harvested cookies
     """
     
     def __init__(self, logger):
@@ -188,89 +215,211 @@ class RealCookieSeeder:
         self.session_cache = {}  # In production, this would be Redis/database
         self.cache_ttl = 3600  # 1 hour TTL for harvested cookies
     
-    async def harvest_walmart_session(self, persona: BrowserPersona) -> Dict[str, Any]:
+    async def harvest_walmart_session(self, persona: BrowserPersona, store_identification: dict = None) -> Dict[str, Any]:
         """
-        Harvest real cookies by making an actual request to Walmart homepage.
-        This gets us authentic session cookies that won't trigger bot detection.
+        Harvest real cookies by using Playwright to wait for JavaScript execution.
+        This captures JavaScript-generated store location cookies that aiohttp cannot get.
         """
-        self.logger.info(f"🌾 [Real Harvest] Harvesting authentic cookies for {persona.persona_id}")
+        self.logger.info(f"🌾 [Playwright Harvest] Harvesting authentic cookies for {persona.persona_id}")
         
-        # Create a clean session for harvesting
-        async with aiohttp.ClientSession() as session:
-            # Build realistic headers for initial harvest request
-            harvest_headers = {
-                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                "accept-language": "en-US,en;q=0.9",
-                "cache-control": "no-cache",
-                "pragma": "no-cache",
-                "sec-ch-ua": persona.sec_ch_ua,
-                "sec-ch-ua-mobile": persona.sec_ch_ua_mobile,
-                "sec-ch-ua-platform": persona.sec_ch_ua_platform,
-                "sec-fetch-dest": "document",
-                "sec-fetch-mode": "navigate", 
-                "sec-fetch-site": "none",
-                "sec-fetch-user": "?1",
-                "upgrade-insecure-requests": "1",
-                "user-agent": persona.user_agent
-            }
-            
-            try:
-                # Make initial request to Walmart homepage to harvest session cookies
-                self.logger.info("--- HEADERS AIOHTTP IS SENDING to www.walmart.com for seeding ---")
-                for key, value in harvest_headers.items():
-                    self.logger.info(f"  {key}: {value}")
-                self.logger.info("-------------------------------------")
-
-                async with session.get(
-                    "https://www.walmart.com",
-                    headers=harvest_headers,
-                    ssl=False,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
+        # Initialize Playwright with proper resource management
+        try:
+            async with async_playwright() as playwright:
+                # Launch browser
+                playwright_engine = await playwright.chromium.launch(
+                    headless=True,
+                    args=[
+                        '--no-sandbox',
+                        '--disable-blink-features=AutomationControlled',
+                        '--disable-dev-shm-usage',
+                        '--disable-extensions',
+                        '--no-first-run',
+                        '--disable-default-apps',
+                        '--disable-features=TranslateUI,VizDisplayCompositor',
+                        '--disable-ipc-flooding-protection'
+                    ],
+                    channel='chrome'
+                )
+                
+                # Build realistic headers for Playwright context
+                extra_headers = {
+                    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'accept-language': 'en-US,en;q=0.9',
+                    'cache-control': 'no-cache',
+                    'sec-fetch-dest': 'document',
+                    'sec-fetch-mode': 'navigate',
+                    'sec-fetch-site': 'none',
+                    'sec-fetch-user': '?1',
+                    'upgrade-insecure-requests': '1'
+                }
+                
+                # Configure proxy if available
+                proxy_config = None
+                try:
+                    proxy_user = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_USER")
+                    proxy_pass = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_PASSWORD")
+                    proxy_host = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_HOST")
+                    proxy_port = os.getenv("BRIGHTDATA_RESIDENTIAL_PROXY_PORT")
                     
-                    if response.status != 200:
-                        self.logger.error(f"❌ [Harvest] Failed to harvest cookies: HTTP {response.status}")
-                        return {"success": False, "cookies": {}, "headers": {}}
+                    if proxy_user and proxy_host:
+                        # Add geographic targeting based on store location
+                        # This prevents STORE_ID_MISMATCH errors due to geographic IP inconsistency
+                        store_id = store_identification.get('store_id', '1198') if store_identification else '1198'
+                        target_state = get_store_state(store_id)
+                        proxy_user_with_targeting = f"{proxy_user}-country-US-state-{target_state}"
+                        proxy_config = {
+                            'server': f'http://{proxy_host}:{proxy_port}',
+                            'username': proxy_user_with_targeting,
+                            'password': proxy_pass
+                        }
+                        self.logger.info(f"🌐 [Playwright] Using {target_state}-targeted proxy for store {store_id}: {proxy_host}:{proxy_port}")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ [Playwright] Proxy config failed: {e}")
+                
+                # Create browser context with persona configuration
+                context = await playwright_engine.new_context(
+                    user_agent=persona.user_agent,
+                    viewport={'width': persona.viewport_width, 'height': persona.viewport_height},
+                    extra_http_headers=extra_headers,
+                    locale='en-US',
+                    timezone_id='America/Chicago',
+                    proxy=proxy_config,
+                    ignore_https_errors=True  # For proxy compatibility
+                )
+                
+                # Inject stealth scripts to avoid bot detection
+                await context.add_init_script("""
+                    // Remove webdriver property
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined,
+                    });
                     
-                    # Extract all cookies set by Walmart
-                    harvested_cookies = {}
-                    if hasattr(response, 'cookies') and response.cookies:
-                        for cookie_name, cookie in response.cookies.items():
-                            if hasattr(cookie, 'value'):
-                                # SimpleCookie object
-                                harvested_cookies[cookie_name] = cookie.value
-                            else:
-                                # Direct cookie value
-                                harvested_cookies[cookie_name] = str(cookie)
+                    // Mock Chrome runtime
+                    window.chrome = {
+                        runtime: {}
+                    };
                     
-                    self.logger.info(f"✅ [Harvest] Successfully harvested {len(harvested_cookies)} authentic cookies")
-                    self.logger.debug(f"🍪 [Harvest] Cookie names: {list(harvested_cookies.keys())}")
+                    // Mock permissions API
+                    const originalQuery = window.navigator.permissions.query;
+                    window.navigator.permissions.query = (parameters) => {
+                        return parameters.name === 'notifications' ?
+                            Promise.resolve({ state: Notification.permission }) :
+                            originalQuery(parameters);
+                    };
                     
-                    # Cache the harvested cookies with TTL
-                    cache_key = f"walmart_{persona.persona_id}_{int(time.time() / self.cache_ttl)}"
-                    self.session_cache[cache_key] = {
-                        "cookies": harvested_cookies,
-                        "harvested_at": time.time(),
-                        "persona_id": persona.persona_id
-                    }
+                    // Override plugins length
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [1, 2, 3, 4, 5]
+                    });
+                """)
+                
+                # Create new page
+                page = await context.new_page()
+                
+                # Track network responses for debugging
+                response_data = {'status': None, 'redirects': []}
+                
+                async def handle_response(response):
+                    if 'walmart.com' in response.url:
+                        response_data['status'] = response.status
+                        if response.status in [301, 302, 307, 308]:
+                            response_data['redirects'].append({
+                                'from': response.url,
+                                'status': response.status
+                            })
+                        self.logger.debug(f"🌐 [Response] {response.url}: {response.status}")
+                
+                page.on('response', handle_response)
+                
+                # Navigate to Walmart homepage and wait for JavaScript execution
+                self.logger.info("🌐 [Playwright] Navigating to Walmart.com...")
+                try:
+                    response = await page.goto(
+                        "https://www.walmart.com",
+                        wait_until='networkidle',
+                        timeout=60000  # 60 second timeout
+                    )
                     
-                    return {
-                        "success": True,
-                        "cookies": harvested_cookies,
-                        "headers": {
-                            "x-session-harvested": "true",
-                            "x-harvest-time": str(int(time.time())),
-                            "x-persona-id": persona.persona_id
-                        },
-                        "harvested_at": time.time(),
-                        "cache_key": cache_key
-                    }
+                    if response:
+                        response_status = response.status
+                        self.logger.info(f"📄 [Playwright] Page loaded: HTTP {response_status}")
+                        
+                        # Check for successful page load
+                        if response_status == 200:
+                            # Wait a bit more for dynamic content
+                            await page.wait_for_timeout(3000)
+                            
+                            # Get page title to verify success
+                            title = await page.title()
+                            self.logger.info(f"📄 [Playwright] Page title: {title}")
+                            
+                            # Extract all cookies from browser context
+                            playwright_cookies = await context.cookies()
+                            harvested_cookies = {}
+                            
+                            for cookie in playwright_cookies:
+                                harvested_cookies[cookie['name']] = cookie['value']
+                            
+                            self.logger.info(f"✅ [Playwright Harvest] Successfully harvested {len(harvested_cookies)} cookies with JavaScript")
+                            self.logger.debug(f"🍪 [Playwright Harvest] Cookie names: {list(harvested_cookies.keys())}")
+                            
+                            # Cache the harvested cookies with TTL
+                            cache_key = f"walmart_{persona.persona_id}_{int(time.time() / self.cache_ttl)}"
+                            self.session_cache[cache_key] = {
+                                "cookies": harvested_cookies,
+                                "harvested_at": time.time(),
+                                "persona_id": persona.persona_id
+                            }
+                            
+                            self.logger.info(f"🎯 [Cookie Cache] Cached {len(harvested_cookies)} cookies with key: {cache_key}")
+                            
+                            # Create the success result BEFORE attempting cleanup
+                            success_result = {
+                                "success": True,
+                                "cookies": harvested_cookies,
+                                "headers": {
+                                    "x-session-harvested": "playwright",
+                                    "x-harvest-time": str(int(time.time())),
+                                    "x-persona-id": persona.persona_id,
+                                    "x-page-title": title
+                                },
+                                "harvested_at": time.time(),
+                                "cache_key": cache_key
+                            }
+                            
+                            # Attempt cleanup but don't let cleanup failures affect success
+                            try:
+                                await page.close()
+                                await context.close()  
+                                await playwright_engine.close()
+                                self.logger.debug("🧹 [Cleanup] Successfully closed all Playwright resources")
+                            except Exception as cleanup_error:
+                                self.logger.warning(f"⚠️ [Cleanup] Resource cleanup failed (non-critical): {cleanup_error}")
+                                self.logger.info("✅ [Success] Cookie harvesting succeeded despite cleanup issues")
+                            
+                            return success_result
+                        else:
+                            self.logger.error(f"❌ [Playwright Navigation] Page load failed with HTTP {response_status}")
+                            self.logger.error("🔍 [Troubleshooting] This could indicate: proxy issues, bot detection, or network problems")
+                    else:
+                        self.logger.error(f"❌ [Playwright Navigation] No HTTP response received from Walmart.com")
+                        self.logger.error("🔍 [Troubleshooting] This could indicate: network connectivity issues or proxy blocking")
+                        
+                except Exception as nav_error:
+                    self.logger.error(f"❌ [Playwright Navigation] Failed to navigate to Walmart.com: {nav_error}")
+                    self.logger.error("🔍 [Troubleshooting] This could indicate: proxy configuration errors, browser launch issues, or network problems")
                     
-            except Exception as e:
-                self.logger.error(f"❌ [Harvest] Cookie harvesting failed: {e}")
-                return {"success": False, "cookies": {}, "headers": {}}
+                # Resources automatically closed by async with context manager
+                
+        except Exception as e:
+            self.logger.error(f"❌ [Playwright Browser] Failed to launch or configure browser: {e}")
+            self.logger.error("🔍 [Troubleshooting] This could indicate: Chrome/Chromium not installed, permission issues, or proxy configuration problems")
+        
+        # Return failure result with helpful error context
+        self.logger.error("🚫 [Cookie Harvest Failed] Unable to harvest JavaScript cookies - STORE_ID_MISMATCH errors likely")
+        return {"success": False, "cookies": {}, "headers": {}}
     
-    async def get_seeded_cookies(self, target_url: str, persona: BrowserPersona) -> Dict[str, Any]:
+    async def get_seeded_cookies(self, target_url: str, persona: BrowserPersona, store_identification: dict = None) -> Dict[str, Any]:
         """
         Get authentic seeded cookies, either from cache or by harvesting fresh ones.
         """
@@ -294,7 +443,7 @@ class RealCookieSeeder:
                 }
         
         # Cache miss or expired - harvest fresh cookies
-        return await self.harvest_walmart_session(persona)
+        return await self.harvest_walmart_session(persona, store_identification)
 
 
 class AdvancedWalmartHeaderBuilder:
@@ -459,60 +608,90 @@ class AdvancedWalmartHeaderBuilder:
     
     async def build_advanced_headers(self, target_url: str) -> Dict[str, str]:
         """
-        Build advanced headers with modern browser fingerprinting.
+        Build simplified headers that preserve store cookies while reducing bot detection.
         """
-        self.logger.info(f"🏗️ [Advanced Headers] Building for persona: {self.persona.persona_id}")
+        self.logger.info(f"🏗️ [Simplified Headers] Building for persona: {self.persona.persona_id}")
         
-        # Get device performance headers
-        device_headers = self._get_device_performance_headers()
-        
-        # Base headers with modern browser characteristics
+        # Simplified essential headers (remove bot-like perfection)
         headers = {
-            # Core headers (modern browser order)
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "accept-language": "en-US,en;q=0.9",
-            "cache-control": "no-cache",
-            "pragma": "no-cache",
-            
-            # Modern priority header
-            "priority": "u=0, i",
-            
-            # Chrome Client Hints (modern browser fingerprinting)
-            "sec-ch-ua": self.persona.sec_ch_ua,
-            "sec-ch-ua-mobile": self.persona.sec_ch_ua_mobile,
-            "sec-ch-ua-platform": self.persona.sec_ch_ua_platform,
-            
-            # Fetch Metadata headers (modern security)
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate", 
-            "sec-fetch-site": "same-origin",
-            "sec-fetch-user": "?1",
-            
-            # Security headers
+            # Essential browser headers only
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "accept-language": "en-US,en;q=0.5",
+            "accept-encoding": "gzip, deflate, br",
+            "connection": "keep-alive",
+            "referer": "https://www.walmart.com/",
             "upgrade-insecure-requests": "1",
-            
-            # Consistent persona User-Agent
             "user-agent": self.persona.user_agent,
             
+            # Start with base location cookies
             "cookie": self._base_location_cookies
         }
         
-        # Add device performance headers
-        headers.update(device_headers)
-        
-        # Enhance with cookie seeding
+        # CRITICAL FIX: Use cached seeded data to preserve store location cookies
         try:
-            seeded_data = await self.cookie_seeder.get_seeded_cookies(target_url, self.persona)
-            if seeded_data.get('success'):
-                headers = self._merge_cookies_and_headers(headers, seeded_data)
-                self.logger.info(f"✅ [Advanced Headers] Enhanced with {len(seeded_data.get('cookies', {}))} seeded cookies")
+            if hasattr(self, 'cached_seeded_data') and self.cached_seeded_data:
+                seeded_data = self.cached_seeded_data
+                if seeded_data.get('success'):
+                    headers = self._merge_cookies_and_headers_simplified(headers, seeded_data)
+                    self.logger.debug(f"🔄 [Simplified Headers] Preserved {len(seeded_data.get('cookies', {}))} store location cookies")
+                else:
+                    self.logger.info(f"🏗️ [Simplified Headers] Using foundation cookies only (no cached data)")
             else:
-                self.logger.info(f"🏗️ [Advanced Headers] Using foundation cookies only")
+                # Fallback to live harvesting if no cached data (shouldn't happen in normal operation)
+                self.logger.warning(f"⚠️ [Headers] No cached seeded data - falling back to live harvesting")
+                seeded_data = await self.cookie_seeder.get_seeded_cookies(target_url, self.persona, self.store_identification)
+                if seeded_data.get('success'):
+                    headers = self._merge_cookies_and_headers_simplified(headers, seeded_data)
+                    self.logger.info(f"✅ [Simplified Headers] Enhanced with {len(seeded_data.get('cookies', {}))} store cookies")
+                else:
+                    self.logger.info(f"🏗️ [Simplified Headers] Using foundation cookies only")
         except Exception as e:
-            self.logger.warning(f"⚠️ [Advanced Headers] Cookie seeding failed: {e}")
+            self.logger.warning(f"⚠️ [Simplified Headers] Cookie processing failed: {e}")
         
-        self.logger.info(f"🏗️ [Advanced Headers] Built {len(headers)} headers for {self.persona.persona_id}")
+        self.logger.debug(f"🏗️ [Simplified Headers] Built {len(headers)} essential headers for {self.persona.persona_id}")
         return headers
+    
+    def _merge_cookies_and_headers_simplified(self, base_headers: Dict[str, str], seeded_data: Dict[str, Any]) -> Dict[str, str]:
+        """
+        Merge foundation location cookies with harvested store cookies (simplified approach).
+        Preserves all store location cookies while avoiding bot-like header patterns.
+        """
+        enhanced_headers = base_headers.copy()
+        
+        # Merge all cookies into a single cookie string (preserves store targeting)
+        seeded_cookies = seeded_data.get('cookies', {})
+        if seeded_cookies:
+            # Parse existing base cookies
+            existing_cookie_dict = {}
+            if enhanced_headers.get('cookie'):
+                for cookie_pair in enhanced_headers['cookie'].split('; '):
+                    if '=' in cookie_pair:
+                        name, value = cookie_pair.split('=', 1)
+                        existing_cookie_dict[name.strip()] = value.strip()
+            
+            # Add/override with harvested cookies (including critical store cookies)
+            existing_cookie_dict.update(seeded_cookies)
+            
+            # Build final cookie string
+            cookie_parts = [f"{name}={value}" for name, value in existing_cookie_dict.items()]
+            enhanced_headers['cookie'] = '; '.join(cookie_parts)
+            
+            self.logger.debug(f"🍪 [Simplified Merge] Preserved {len(existing_cookie_dict)} total cookies including store location data")
+        
+        # DO NOT add tracking headers - keep minimal to avoid bot detection
+        # Remove any bot-like headers that might have been added
+        bot_like_headers = [
+            'x-session-harvested', 'x-harvest-time', 'x-persona-id', 'x-page-title',
+            'sec-ch-ua', 'sec-ch-ua-mobile', 'sec-ch-ua-platform',
+            'sec-fetch-dest', 'sec-fetch-mode', 'sec-fetch-site', 'sec-fetch-user',
+            'cache-control', 'pragma', 'priority', 'downlink', 'dpr', 'rtt', 'ect'
+        ]
+        
+        for header_name in bot_like_headers:
+            enhanced_headers.pop(header_name, None)
+            enhanced_headers.pop(header_name.lower(), None)
+        
+        return enhanced_headers
     
     def _merge_cookies_and_headers(self, base_headers: Dict[str, str], seeded_data: Dict[str, Any]) -> Dict[str, str]:
         """
@@ -556,6 +735,12 @@ class AdvancedWalmartHeaderBuilder:
 class AdvancedAiohttpFetcher:
     """
     Enhanced fetcher that maintains session-consistent persona across all requests.
+    Uses AIOHTTP for actual search requests with Playwright-harvested cookies.
+    
+    This hybrid approach provides:
+    - Fast aiohttp performance for search requests
+    - JavaScript-generated cookies from Playwright seeding
+    - Consistent persona fingerprinting across all requests
     """
     
     def __init__(
@@ -584,13 +769,18 @@ class AdvancedAiohttpFetcher:
         self.max_retries = config.get('max_retries', 2)
     
     async def fetch_page(self, session: aiohttp.ClientSession, url: str) -> Dict[str, Any]:
-        """Fetch single page with advanced fingerprinting."""
+        """Fetch single page with simplified headers to avoid bot detection."""
         retries = 0
         last_error = None
         
+        # Add small human-like delay before each request
+        if retries == 0:  # Only on first attempt, not retries
+            pre_request_delay = random.uniform(0.5, 2.0)
+            await asyncio.sleep(pre_request_delay)
+        
         while retries <= self.max_retries:
             try:
-                # Build advanced headers for this request (consistent persona)
+                # Build simplified headers for this request (preserve store cookies, reduce bot detection)
                 headers = await self.header_builder.build_advanced_headers(url)
                 proxy = self.get_proxy() if self.get_proxy else None
                 
@@ -602,9 +792,10 @@ class AdvancedAiohttpFetcher:
                     self.logger.info(f"  {key}: {value}")
                 self.logger.info("-------------------------------------")
 
+                # Use aiohttp for fast search requests with Playwright-harvested cookies
                 async with session.get(
                     url,
-                    headers=headers,
+                    headers=headers,  # Contains Playwright-harvested cookies merged with base headers
                     proxy=proxy,
                     ssl=False,
                     timeout=aiohttp.ClientTimeout(total=self.timeout),
@@ -630,7 +821,10 @@ class AdvancedAiohttpFetcher:
                 retries += 1
                 
                 if retries <= self.max_retries:
-                    await asyncio.sleep(2 ** retries)  # Exponential backoff
+                    # Add human-like delay between retries (instead of just exponential backoff)
+                    base_delay = 2 ** retries
+                    human_delay = base_delay + random.uniform(1.0, 3.0)  # Add 1-3s randomness
+                    await asyncio.sleep(human_delay)
         
         self.logger.error(f"❌ [Fetch] Failed to fetch {url} after {self.max_retries + 1} attempts")
         return {
@@ -688,8 +882,9 @@ class AdvancedAiohttpFetcher:
         
         start_time = time.time()
         
-        self.logger.info(f"🚀 [Advanced Fetch] Starting with persona: {self.persona.persona_id}")
-        self.logger.info(f"🚀 [Advanced Fetch] Target: {start_url}")
+        self.logger.info(f"🚀 [Hybrid Fetch] Starting aiohttp requests with persona: {self.persona.persona_id}")
+        self.logger.info(f"🚀 [Hybrid Fetch] Using Playwright-harvested cookies + aiohttp requests")
+        self.logger.info(f"🚀 [Hybrid Fetch] Target: {start_url}")
         
         async with aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(limit=10, limit_per_host=5)
@@ -787,15 +982,23 @@ class AdvancedFingerprintingBundle:
         self.persona_chooser = BrowserPersonaChooser()
         self.session_persona = self.persona_chooser.get_random_persona()
         self.cookie_seeder = RealCookieSeeder(logger)
+        
+        # CRITICAL FIX: Harvest cookies ONCE during initialization, not per-request
+        self.seeded_data = None  # Will be populated by harvest_initial_cookies()
+        
         self.header_builder = AdvancedWalmartHeaderBuilder(
             store_identification, self.session_persona, self.cookie_seeder, logger
         )
+        # Create a store-specific proxy getter for geographic targeting
+        store_id = store_identification['store_id']
+        store_proxy_getter = lambda: get_proxy(store_id=store_id)
+        
         self.fetcher = AdvancedAiohttpFetcher(
             store_identification=store_identification,
             paginator=self.paginator,
             persona=self.session_persona,
             header_builder=self.header_builder,
-            get_proxy=get_proxy,
+            get_proxy=store_proxy_getter,
             project_config=project_config,
             logger=logger
         )
@@ -810,6 +1013,45 @@ class AdvancedFingerprintingBundle:
         
         logger.info(f"🎭 [Bundle] Initialized with session persona: {self.session_persona.persona_id}")
         logger.info(f"🎭 [Bundle] Persona details: {self.session_persona.user_agent[:50]}...")
+    
+    async def harvest_initial_cookies(self):
+        """
+        Harvest cookies ONCE during initialization, then reuse for all requests.
+        This is the proper implementation of the caching strategy.
+        """
+        self.logger.info("🌾 [Initial Harvest] Harvesting cookies ONCE for entire session...")
+        
+        try:
+            # Harvest cookies using Playwright - this should only happen once
+            self.seeded_data = await self.cookie_seeder.get_seeded_cookies(
+                "https://www.walmart.com", 
+                self.session_persona,
+                self.store_identification
+            )
+            
+            if self.seeded_data.get('success'):
+                cookie_count = len(self.seeded_data.get('cookies', {}))
+                self.logger.info(f"✅ [Initial Harvest] Successfully harvested {cookie_count} cookies for session")
+                self.logger.info(f"🔄 [Initial Harvest] These cookies will be reused for ALL search requests")
+                
+                # Inject the cached seeded data into header builder to avoid re-harvesting
+                self.header_builder.cached_seeded_data = self.seeded_data
+                
+            else:
+                self.logger.error("❌ [Initial Harvest] Failed to harvest initial cookies")
+                raise RuntimeError("Cookie seeding failed - cannot proceed with STORE_ID_MISMATCH errors")
+                
+        except Exception as e:
+            self.logger.error(f"❌ [Initial Harvest] Critical error during cookie harvesting: {e}")
+            self.logger.error("🔍 [Troubleshooting] Common causes:")
+            self.logger.error("   • Browser/Chrome not properly installed")
+            self.logger.error("   • Proxy configuration issues (check BRIGHTDATA_* environment variables)")
+            self.logger.error("   • Network connectivity problems")
+            self.logger.error("   • Bot detection blocking browser automation")
+            self.logger.error("   • Resource cleanup conflicts (if using async context managers)")
+            raise RuntimeError(f"Cookie seeding failed - detailed error: {e}")
+            
+        return self.seeded_data
     
     def handle_result(self, result: Dict[str, Any], page_num: int, is_retry: bool = False):
         """Handle fetch results with advanced observability."""
@@ -865,7 +1107,8 @@ class AdvancedFingerprintingBundle:
         advanced_summary += f"  User Agent: {self.session_persona.user_agent}\n"
         advanced_summary += f"  Device Specs: {self.session_persona.device_specs}\n"
         advanced_summary += f"  Viewport: {self.session_persona.viewport_width}x{self.session_persona.viewport_height}\n"
-        advanced_summary += f"  Cookie Seeding: Enabled (Real - Harvested from walmart.com)\n"
+        advanced_summary += f"  Cookie Seeding: Enabled (Playwright - JavaScript cookies from walmart.com)\n"
+        advanced_summary += f"  Request Engine: aiohttp (fast requests with Playwright-harvested cookies)\n"
         advanced_summary += f"  Modern Headers: Chrome Client Hints, Fetch Metadata, Device Performance\n"
         
         return base_summary + advanced_summary
@@ -944,11 +1187,43 @@ async def main():
     
     logger.info("🎭 [Fingerprinting] Advanced browser persona initialized")
     logger.info(f"🎭 [Fingerprinting] Session persona: {bundle.session_persona.persona_id}")
-    logger.info(f"🎭 [Fingerprinting] Features: Session consistency, Modern headers, Cookie seeding, Device simulation")
+    logger.info(f"🎭 [Fingerprinting] Features: Session consistency, Modern headers, Hybrid cookie seeding, Device simulation")
+    logger.info(f"🎭 [Hybrid Approach] Playwright for cookie seeding + aiohttp for search requests")
     
-    # Execute advanced fetch with sophisticated fingerprinting
+    # CRITICAL FIX: Harvest cookies ONCE before starting any searches
     try:
-        logger.info("🚀 [Execution] Starting advanced fingerprinting fetch...")
+        logger.info("🌾 [Cookie Seeding] Harvesting cookies ONCE for entire session...")
+        seeded_data = await bundle.harvest_initial_cookies()
+        
+        if seeded_data and seeded_data.get('success'):
+            cookie_count = len(seeded_data.get('cookies', {}))
+            logger.info(f"✅ [Cookie Seeding] Successfully harvested {cookie_count} cookies")
+            logger.info(f"🔄 [Cookie Seeding] These cookies will be reused for ALL search requests")
+            
+            # Add human-like delay after cookie harvesting to avoid bot detection
+            delay_seconds = random.uniform(3.0, 6.0)
+            logger.info(f"⏱️ [Human Behavior] Waiting {delay_seconds:.1f}s before search requests (mimics human browsing pattern)")
+            await asyncio.sleep(delay_seconds)
+        else:
+            logger.error("❌ [Cookie Seeding] Initial cookie harvest failed - cannot proceed")
+            return
+            
+    except Exception as e:
+        logger.error(f"❌ [Cookie Seeding] Critical error during initial cookie harvest: {e}")
+        logger.error("Cannot proceed without cookies - STORE_ID_MISMATCH errors will occur")
+        
+        # Check if this was actually a successful harvest with cleanup failure
+        if "cookies ONCE for entire session" in str(e) or "Target page, context or browser has been closed" in str(e):
+            logger.warning("⚠️ [Analysis] Error occurred during cleanup phase, not during cookie harvesting")
+            logger.warning("⚠️ [Analysis] Cookie harvesting may have succeeded but cleanup failed")
+            logger.info("🔧 [Recommendation] Check logs for '✅ [Playwright Harvest] Successfully harvested' message")
+            logger.info("🔧 [Recommendation] If cookies were harvested, this is a non-critical cleanup issue")
+        
+        return
+    
+    # Execute advanced fetch with sophisticated fingerprinting (using cached cookies)
+    try:
+        logger.info("🚀 [Execution] Starting advanced fingerprinting fetch with cached cookies...")
         results = await bundle.fetcher.fetch_all_with_advanced_fingerprinting(
             first_page_search_url, 
             bundle.handle_result
