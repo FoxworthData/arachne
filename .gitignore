@@ -30,3 +30,4 @@ env_save.txt
 # Log and output files
 *.log
 *.html
+*.csv
