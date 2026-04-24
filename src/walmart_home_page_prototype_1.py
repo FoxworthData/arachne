@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 
-from src.curlconverter.walmart_home_page import load_search_by_query
+from src.curlconverter.walmart.walmart_home_page import load_search_by_query
 from src.utils.header_builders import WalmartHeaderBuilder
 from src.utils.proxy_builder_simple import get_proxies, get_proxy_components
 from src.utils.retailer_factory import RetailerBundle

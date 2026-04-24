@@ -9,13 +9,16 @@ from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 
-from src.curlconverter.walmart_home_page import load_search_by_query
-from src.utils.header_builders import WalmartHeaderBuilder
+from src.curlconverter.walmart.walmart_home_page import load_search_by_query
+from src.utils.fashionphile_cookie_seeder import FashionphileCookieSeeder
+from src.utils.file_namer import FashionphileFileNamer
+from src.utils.header_builders import WalmartHeaderBuilder, FashionphileCookieSeedingHeaderBuilder
+from src.utils.paginators import FashionphilePaginator
 from src.utils.proxy_builder_simple import get_proxies, get_proxy_components
+from src.utils.response_analyzers import fashionphile_response_analyzer
 from src.utils.retailer_factory import RetailerBundle
 from src.utils.setup_config_logging import setup_config_logging
 from src.utils.browser_personas import BrowserPersonaChooser, BrowserPersona
-from src.utils.walmart_cookie_seeder import WalmartCookieSeeder
 from src.utils.yaml_util import load_store_by_id
 
 load_dotenv()
@@ -23,14 +26,14 @@ load_dotenv()
 logger, logger_manager, project_config = setup_config_logging(__name__)
 
 
-def blend_cookies(location_cookies, harvested_cookies):
-
-    cookie_string = f"hasLocData={location_cookies['hasLocData']}; ACID={location_cookies['ACID']}; locGuestData={location_cookies['locGuestData']}; assortmentStoreId={location_cookies['assortmentStoreId']}; hasACID=true; locDataV3={location_cookies['locDataV3']}; "
-
-    harvested_cookie_string = "; ".join(f"{key}={value}" for key, value in harvested_cookies.items())
-
-    cookie_string += f"{harvested_cookie_string};"
-
+def blend_cookies(initial_cookies, harvested_cookies):
+    """Blend initial and harvested cookies for Fashionphile"""
+    # Combine initial cookies with harvested cookies
+    all_cookies = {**initial_cookies, **harvested_cookies}
+    
+    # Create cookie string
+    cookie_string = "; ".join(f"{key}={value}" for key, value in all_cookies.items())
+    
     return cookie_string
 
 class LocalBundle(RetailerBundle):
@@ -44,57 +47,16 @@ class LocalBundle(RetailerBundle):
     def get_headers(self):
         return self.build_headers()
 
-class WalmartCookieSeedingHeaderBuilder(WalmartHeaderBuilder):
-    def __init__(self, store_identification:dict, browser_persona:BrowserPersona):
-        super().__init__(store_identification=store_identification)
-        self.browser_persona = browser_persona
-
-        self.initial_headers = {
-                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'accept-language': 'en-US,en;q=0.9',
-                'cache-control': 'no-cache',
-                'pragma': 'no-cache',
-                'priority': 'u=0, i',
-                'sec-ch-ua': self.browser_persona.sec_ch_ua,
-                'sec-ch-ua-mobile': self.browser_persona.sec_ch_ua_mobile,
-                'sec-ch-ua-platform': self.browser_persona.sec_ch_ua_platform,
-                'sec-fetch-dest': 'document',
-                'sec-fetch-mode': 'navigate',
-                'sec-fetch-site': 'none',
-                'sec-fetch-user': '?1',
-                'upgrade-insecure-requests': '1',
-                'user-agent': self.browser_persona.user_agent
-            }
-
-        generated_location_cookies = self.location_cookie()
-        self.generated_location_cookie_dict = {}
-        for pair in generated_location_cookies.split('; '):
-            if '=' in pair:
-                name, value = pair.split('=', 1)
-                self.generated_location_cookie_dict[name] = value
-                logger.info(f"Generated cookie: {name}={value}")
-
-        self.initial_cookies = {
-            'hasACID': 'true',
-            'adblocked': 'false',
-            'hasLocData': '1',
-            'ACID': self.generated_location_cookie_dict['ACID'],
-            'locGuestData': self.generated_location_cookie_dict['locGuestData'],
-            'locDataV3': self.generated_location_cookie_dict['locDataV3'],
-            'assortmentStoreId': self.store_id
-        }
-
-
 async def main():
-    retailer = 'Walmart'
-    retailer_store_id = '1198'
+    retailer = 'fashionphile'
+    retailer_store_id = 'website'
     fetch_type = 'search'
-    query = 'Milk'  # Simple query for testing
+    query = 'newest louboutin shoes'  # Simple query for testing
 
     # Load configuration using existing utilities with absolute paths
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    stores_file = os.path.join(project_root, 'data', 'Walmart_stores.yaml')
-    search_file = os.path.join(project_root, 'data', 'Walmart_fetch_search.yaml')
+    stores_file = os.path.join(project_root, 'data', 'fashionphile_stores.yaml')
+    search_file = os.path.join(project_root, 'data', 'fashionphile_fetch_search.yaml')
 
     store_identification = load_store_by_id(store_id=retailer_store_id, yaml_file=stores_file)
     search_config = load_search_by_query(query=query, yaml_file=search_file)
@@ -110,8 +72,8 @@ async def main():
 
     proxies = get_proxies(proxy_type='residential')
 
-    header_builder = WalmartCookieSeedingHeaderBuilder(store_identification=store_identification, browser_persona=browser_persona)
-    cookie_seeder = WalmartCookieSeeder(
+    header_builder = FashionphileCookieSeedingHeaderBuilder(store_identification=store_identification, browser_persona=browser_persona)
+    cookie_seeder = FashionphileCookieSeeder(
         retailer_store_id=retailer_store_id,
         initial_headers=header_builder.initial_headers,
         initial_cookies=header_builder.initial_cookies,
@@ -147,7 +109,20 @@ async def main():
             logger=logger,
         )
 
+        bundle.response_analyzer = fashionphile_response_analyzer
+        bundle.file_namer = FashionphileFileNamer(
+            retailer="Fashionphile",
+            store_id=retailer_store_id,
+            scrape_type=fetch_type,
+        )
+        bundle.paginator = FashionphilePaginator()
+
+        bundle.fetcher.paginator = FashionphilePaginator()
+        bundle.fetcher.response_analyzer = fashionphile_response_analyzer
+
         bundle.set_headers(seeded_headers)
+
+
 
         results = await bundle.fetcher.fetch_all(first_page_search_url, bundle.handle_result)
 
