@@ -31,3 +31,8 @@ env_save.txt
 *.log
 *.html
 *.csv
+
+# Local Claude Code config (per-user, not team-shared)
+.mcp.json
+.claude/settings.local.json
+.claude/sessions/
