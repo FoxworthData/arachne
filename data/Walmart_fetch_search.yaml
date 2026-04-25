@@ -69,7 +69,7 @@
 - query: Mayonnaise
   search_url: https://www.walmart.com/browse/food/shop-all-mayonnaise/976759_976794_7981173_6451278_6720636
 - query: Milk
-  search_url: https://www.walmart.com/browse/food/milk/976759_9176907_4405816
+  search_url: https://www.walmart.com/search?q=Milk
 - query: Mustard
   search_url: https://www.walmart.com/browse/food/shop-all-mustard/976759_976794_7981173_3083319_1393895
 - query: Oatmeal

@@ -44,3 +44,29 @@ async def walmart_response_analyzer(response, url, headers, logger, store_identi
 
     logger.info("🟢 Scraping successful. Response passed all checks.")
     return True
+
+async def fashionphile_response_analyzer(response, url, headers, logger, store_identification, check_store_identification: bool = False):
+    text = await response.text()
+
+    """Checks fashionphile's response for bot detection, browser rejection"""
+    blocked = "Robot or human" in text
+    browser_rejected = f"Sorry, fashionphile site doesn't work with your browser." in text
+    store_id_found = f'"storeId":"{store_identification['store_id']}"' in text
+
+    if blocked:
+        logger.error(f"❌ fashionphile detected bot activity and blocked the request.")
+        raise ValueError(f"fashionphile detected bot activity and blocked the request for url: {url}.")
+        # return {"success": False, "reason": "Bot detected"}
+    else:
+        logger.info(f"✅ Not blocked by fashionphile. Continuing with scraping...")
+
+    if browser_rejected:
+        logger.warning(f"⚠️ fashionphile rejected the browser User-Agent.")
+        raise ValueError(f"fashionphile rejected the browser User-Agent for url: {url}.")
+        # return {"success": False, "reason": "User-Agent rejected"}
+    else:
+        logger.info(f"✅ Browser User-Agent accepted by fashionphile. Continuing with scraping...")
+
+
+    logger.info("🟢 Scraping successful. Response passed all checks.")
+    return True

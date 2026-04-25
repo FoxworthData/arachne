@@ -31,7 +31,7 @@ async def main():
     store_id = '1198'
 
     fetch_type = 'search'
-    query = 'Eggs'
+    query = 'cookies'
 
     # fetch_type = 'store-directory'
     # fetch_type = 'product'

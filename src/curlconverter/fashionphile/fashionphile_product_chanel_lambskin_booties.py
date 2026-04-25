@@ -75,7 +75,7 @@ def get_proxy(proxy_type: str = 'http'):
 
 
 response = requests.get(
-    'https://www.fashionphile.com/p/chanel-lambskin-booties-39-black-navy-1665116',
+    'https://www.fashionphile.com/p/chanel-lambskin-patent-calfskin-pearl-cap-toe-short-boots-39-ivory-black-1704697',
     cookies=cookies,
     headers=headers,
     proxies=get_proxies(),

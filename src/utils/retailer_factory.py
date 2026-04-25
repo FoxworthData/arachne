@@ -5,10 +5,10 @@ from typing import List, Tuple
 from src.utils.fetchers import AiohttpFetcher
 from src.utils.paginators import BooksToScrapePaginator, WalmartPaginator
 from src.utils.fetcher_tracking import FetcherSession, FetchedFile
-from src.utils.file_namer import BooksToScrapeNamer, WalmartNamer
+from src.utils.file_namer import BooksToScrapeNamer, WalmartNamer, FashionphileFileNamer
 from src.utils.file_storage import FileStorage
-from src.utils.header_builders import WalmartHeaderBuilder
-from src.utils.response_analyzers import walmart_response_analyzer
+from src.utils.header_builders import WalmartHeaderBuilder, FashionphileHeaderBuilder
+from src.utils.response_analyzers import walmart_response_analyzer, fashionphile_response_analyzer
 
 
 def get_proxies():
@@ -37,6 +37,7 @@ class RetailerBundle:
         self.logger = logger
         self.file_storage = FileStorage(retailer, project_config, logger)
         self.singleton = singleton
+        self.response_analyzer = None
 
         if not self.singleton:
             if retailer == "Walmart":
@@ -46,8 +47,12 @@ class RetailerBundle:
 
         if retailer == "Walmart":
             self.file_namer = WalmartNamer(retailer, fetch_type, store_identification['store_id'])
-        else:
+            self.response_analyzer = walmart_response_analyzer
+        elif retailer == "books.toscrape.com":
             self.file_namer = BooksToScrapeNamer(retailer, fetch_type, store_identification['store_id'])
+        elif retailer == "Fashionphile":
+            self.file_namer = FashionphileFileNamer(retailer, fetch_type, store_identification['store_id'])
+            self.response_analyzer = fashionphile_response_analyzer
 
         self.fetcher = AiohttpFetcher(
             store_identification=store_identification,
@@ -56,7 +61,7 @@ class RetailerBundle:
             logger=logger,
             get_headers=self.get_headers,
             get_proxy=self.get_proxy,
-            response_analyzer=walmart_response_analyzer,
+            response_analyzer=self.response_analyzer,
             check_store_identification=fetch_type not in ['store-directory', 'store-directory-by-state'],
             max_retries=5
         )
@@ -75,10 +80,13 @@ class RetailerBundle:
                 store_identification=self.store_identification
             )
             return header_builder.build_headers()
+        elif self.retailer == "Fashionphile":
+            header_builder = FashionphileHeaderBuilder(store_identification=self.store_identification)
+            return header_builder.build_headers()
         return {}
 
     def get_proxy(self) -> str:
-        if self.retailer == "Walmart":
+        if self.retailer in ["Walmart", "Fashionphile"]:
             return get_proxy()
         return ""
 

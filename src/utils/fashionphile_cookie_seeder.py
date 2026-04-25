@@ -26,9 +26,9 @@ class NonSuccessStatusError(Exception):
     pass
 
 
-class WalmartCookieSeeder:
+class FashionphileCookieSeeder:
     """
-    Real cookie seeding system that harvests authentic cookies from actual Walmart sessions.
+    Real cookie seeding system that harvests authentic cookies from actual Fashionphile sessions.
     This demonstrates how to properly seed browser fingerprints with genuine session data.
     """
 
@@ -41,8 +41,8 @@ class WalmartCookieSeeder:
         self.session_cache = {}  # In production, this would be Redis/database
         self.cache_ttl = 3600  # 1 hour TTL for harvested cookies
 
-    async def harvest_walmart_seeded_values(self, browser_persona: BrowserPersona):
-        """Harvest Walmart seeded values with retry logic using instance logger"""
+    async def harvest_fashionphile_seeded_values(self, browser_persona: BrowserPersona):
+        """Harvest Fashionphile seeded values with retry logic using instance logger"""
 
         try:
             # Use Retrying context manager to access self.logger
@@ -89,20 +89,20 @@ class WalmartCookieSeeder:
                 cookies=self.initial_cookies  # aiohttp handles cookies dict directly
         ) as session:
 
-            # Make initial request to Walmart homepage to harvest session cookies
-            self.logger.info("--- HEADERS AIOHTTP IS SENDING to www.walmart.com for seeding ---")
+            # Make initial request to Fashionphile homepage to harvest session cookies
+            self.logger.info("--- HEADERS AIOHTTP IS SENDING to www.fashionphile.com for seeding ---")
             for key, value in self.initial_headers.items():
                 self.logger.info(f"  {key}: {value}")
             self.logger.info("-------------------------------------")
 
             async with session.get(
-                    "https://www.walmart.com",
+                    "https://www.fashionphile.com",
                     headers=self.initial_headers,
                     proxy=proxy_url  # aiohttp uses single proxy parameter
             ) as response:
 
-                self.logger.info(f'[COOKIE SEEDING] https://www.walmart.com response code: {response.status}')
-                self.logger.info(f'[COOKIE SEEDING] https://www.walmart.com response reason: {response.reason}')
+                self.logger.info(f'[COOKIE SEEDING] https://www.fashionphile.com response code: {response.status}')
+                self.logger.info(f'[COOKIE SEEDING] https://www.fashionphile.com response reason: {response.reason}')
 
                 if response.status != 200:
                     self.logger.warning(
@@ -112,24 +112,15 @@ class WalmartCookieSeeder:
                 # Get response text (aiohttp requires await)
                 file_text = await response.text()
 
-                self.logger.info(f"[COOKIE SEEDING] Searching response text for storeId:{self.retailer_store_id}...")
-                match = re.search(r'"storeId":"(\d+)"', file_text)
-
-                if not match:
-                    self.logger.warning("[COOKIE SEEDING] No 'storeId' pattern found in the HTML response.")
-                    raise StoreIdNotFoundError("No 'storeId' pattern found in the HTML response")
-
-                found_id = match.group(1)  # Extracts the number from the pattern
-                self.logger.info(f"[COOKIE SEEDING] ******* Found store ID '{found_id}'.")
-
-                if found_id != self.retailer_store_id:
-                    self.logger.warning(
-                        f"[COOKIE SEEDING] Found Store ID '{found_id}' does not match the specified retailer_store_id '{self.retailer_store_id}'.")
-                    raise StoreIdMismatchError(
-                        f"Found Store ID '{found_id}' does not match specified '{self.retailer_store_id}'")
-
-                self.logger.info(
-                    f"[COOKIE SEEDING] Store ID '{found_id}' matches the specified retailer_store_id '{self.retailer_store_id}'.")
+                # Fashionphile doesn't use store IDs - just verify we got a valid response
+                self.logger.info(f"[COOKIE SEEDING] Response received, content length: {len(file_text)} bytes")
+                
+                # Check for Fashionphile-specific indicators in the response
+                if 'fashionphile' not in file_text.lower():
+                    self.logger.warning("[COOKIE SEEDING] Response doesn't appear to be from Fashionphile")
+                    raise NonSuccessStatusError("Response doesn't appear to be from Fashionphile")
+                
+                self.logger.info("[COOKIE SEEDING] Valid Fashionphile response received")
 
                 # Convert aiohttp cookies to dict format for harvesting
                 response_cookies = {}
@@ -145,7 +136,7 @@ class WalmartCookieSeeder:
                 seeded_headers['x-persona-id'] = browser_persona.persona_id
 
                 # Cache the harvested cookies AND headers with TTL
-                cache_key = f"walmart_{browser_persona.persona_id}_{int(time.time() / self.cache_ttl)}"
+                cache_key = f"fashionphile_{browser_persona.persona_id}_{int(time.time() / self.cache_ttl)}"
                 self.session_cache[cache_key] = {
                     "cookies": harvested_cookies,
                     "headers": seeded_headers,  # Cache the seeded headers
@@ -163,11 +154,17 @@ class WalmartCookieSeeder:
 
     async def harvest_cookies(self, all_context_cookies):
         harvested_cookies = {}
-        cookies_to_harvest = ['_pxvid', 'vtc', '_m', 'io_id', 'abqme',
-                              'AID', '_pxhd', 'pxcts', 'wmlh', '_astc',
-                              'userAppVersion', 'akavpau_p1', 'bstc', '__cf_bm', 'com.wm.reflector',
-                              'akavpau_p2', 'bm_mi', 'ak_bmsc', 'if_id', 'bm_sv', '_px3',
-                              '_pxde', ]
+        # Fashionphile-specific cookies based on the working script
+        cookies_to_harvest = [
+            'identityId', 'ajs_anonymous_id', 'fpCookieAccept', 
+            '_tt_enable_cookie', '_ttp', '_gcl_au', '_ga', '_fbp',
+            '_axwrt', '_pin_unauth', '__stripe_mid', '__stripe_sid',
+            'cf_clearance', 'lantern', '_uetsid', '_uetvid', 
+            '_ga_DJV8VFWG4V', '__rtbh.lid', '_clck', '_clsk',
+            'inside-us', 'ax_visitor', '_dd_s', 'ttcsid',
+            'ttcsid_CKEPVNRC77UFTHK77PHG', 'cartData', 'email_popup_counter',
+            'viewed_products', 'redirect_url'
+        ]
         for cookie in all_context_cookies:
             if cookie in cookies_to_harvest:
                 harvested_cookies[cookie] = all_context_cookies[cookie]
@@ -178,7 +175,7 @@ class WalmartCookieSeeder:
         Get authentic seeded cookies, either from cache or by harvesting fresh ones.
         """
         # Check cache first
-        cache_key = f"walmart_{browser_persona.persona_id}_{int(time.time() / self.cache_ttl)}"
+        cache_key = f"fashionphile_{browser_persona.persona_id}_{int(time.time() / self.cache_ttl)}"
 
         if cache_key in self.session_cache:
             cached_data = self.session_cache[cache_key]
@@ -200,4 +197,4 @@ class WalmartCookieSeeder:
                 }
 
         # Cache miss or expired - harvest fresh cookies
-        return await self.harvest_walmart_seeded_values(browser_persona)
+        return await self.harvest_fashionphile_seeded_values(browser_persona)
