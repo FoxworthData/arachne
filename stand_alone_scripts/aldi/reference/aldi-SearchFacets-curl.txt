@@ -1,0 +1,18 @@
+curl 'https://www.aldi.us/graphql?operationName=SearchFacets&variables=%7B%22shopId%22%3A%22339%22%2C%22postalCode%22%3A%2275202%22%2C%22query%22%3A%22milk%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22239be7211ba1456b45268b8207a8f3ca87bc28639fd87165b940053062f8f6ae%22%7D%7D' \
+  -H 'accept: */*' \
+  -H 'accept-language: en-US,en;q=0.9' \
+  -H 'content-type: application/json' \
+  -b '__Host-instacart_sid=v2.46b7cb5e704bcc.jry553HKNsY-nJmxkFkbBkPrQ0BpRiQinNupUsGPrmQ; X-IC-bcx=1; privacy_opt_out=false; ahoy_visitor=4d9da046-e2a5-4fa6-aafb-481da7a40d87; _ga=GA1.1.2133635043.1776890131; _gcl_au=1.1.1094953379.1776890131; __stripe_mid=62f5cda2-f5dc-47cb-84be-ed2547faaecbeddb23; OptanonAlertBoxClosed=2026-04-22T20:35:40.610Z; _scid=m2KtXaLmMUD9_LVWOQy0cY93adJlC1yV; _tt_enable_cookie=1; _ttp=01KPVEFPA7HEWZT12T1YKN5JM3_.tt.1; _sctr=1%7C1776834000000; _fbp=fb.1.1776892147559.40836237999380785; _pin_unauth=dWlkPVltUmxOamsxT1RjdE1qSXpOUzAwWVdSakxXSXpPV1V0WldOaVlqVTJaalEyWlRRMA; ahoy_visit=9f6738c6-5941-41e8-bac8-c6421ef7d39c; __stripe_sid=6b1f51a0-4fd4-4949-ba40-b95274751f262571bf; ttcsid_CHV167BC77U0O25EUDL0=1776967772307::_FgyUECjIR7LN5Bf0rUz.2.1776967820374.0; build_sha=7c59cc6a4e71d1520462d780b39a2e4a78dfb4f8; _scid_r=luKtXaLmMUD9_LVWOQy0cY93adJlC1yV9PTBsg; OptanonConsent=isGpcEnabled=0&datestamp=Thu+Apr+23+2026+13%3A15%3A04+GMT-0500+(Central+Daylight+Time)&version=202601.2.0&browserGpcFlag=0&isIABGlobal=false&hosts=&consentId=fbac7837-48c8-432e-8742-0c581299b4a9&interactionCount=1&isAnonUser=1&prevHadToken=0&landingPath=NotLandingPage&groups=C1%3A1%2CC2%3A1%2CC4%3A1&intType=1&crTime=1776890141221&geolocation=%3B&AwaitingReconsent=false; ttcsid=1776968104403::-aGIM6H2uEMWqUSmVNTu.1.1776968104403.0::1.-165966.0::165717.2.0.0::0.0.0; _ga_9YVX5425QN=GS2.1.s1776967773$o3$g1$t1776968291$j60$l0$h0; _dd_s=aid=95b5422b-92dc-43d1-a823-e04c2c476074&logs=0&expire=1776969191530; forterToken=7951655d9db94d42ad08154265fd6e1f_1776968291324__UDF43-m4_24ck_; _instacart_session_id=QzlIM1k0Z3dtQlFzNVFuTFI5SHk0V2JOM0JIMmtVa2lrbXREeDJmNG5BbUtkN2Vtei9uZ0ZDblJjZ09pWnY3VnZ6SFZua25HaHhzU0VpVGxaRkRMVmhnMWJIZ0Y5Q3R6M0Z4NHM3OUoyWVdUUTNwdG9Hc2hSSFdqRjFBaVArbE5jd3Z3ZDd5Wm94VFRGR0ZMN2lDa2FBPT0tLUVZM2NVSjBLSEJGd2FXNk42bWs0aFE9PQ%3D%3D--b59a63bdbc765c8663c2fde1ed05e3fc5747b3da' \
+  -H 'if-none-match: W/"c75a2330e8b208cb55da426757a6f119"' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://www.aldi.us/store/aldi/s?k=milk' \
+  -H 'sec-ch-ua: "Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' \
+  -H 'x-client-identifier: web' \
+  -H 'x-ic-qp: 9b3c3d0d-7a42-5b4b-8436-71800cafd757' \
+  -H 'x-page-view-id: b52f989b-0e13-5037-87fb-84a174cecbd2'

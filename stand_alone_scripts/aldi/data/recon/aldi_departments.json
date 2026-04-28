@@ -1,0 +1,107 @@
+[
+  {
+    "name": "Buy It Again",
+    "slug": "buyItAgain",
+    "type": "feature"
+  },
+  {
+    "name": "Explore All Products",
+    "slug": "explore-all-products",
+    "type": "department"
+  },
+  {
+    "name": "This Week's ALDI Finds",
+    "slug": "this-weeks-aldi-finds",
+    "type": "department"
+  },
+  {
+    "name": "Upcoming ALDI Finds",
+    "slug": "upcoming-aldi-finds",
+    "type": "department"
+  },
+  {
+    "name": "Fresh Produce",
+    "slug": "fresh-produce",
+    "type": "department"
+  },
+  {
+    "name": "Meat & Seafood",
+    "slug": "meat-seafood",
+    "type": "department"
+  },
+  {
+    "name": "Snacks & Candy",
+    "slug": "snacks-candy",
+    "type": "department"
+  },
+  {
+    "name": "Frozen Foods",
+    "slug": "frozen-foods",
+    "type": "department"
+  },
+  {
+    "name": "Dairy & Eggs",
+    "slug": "dairy-and-eggs",
+    "type": "department"
+  },
+  {
+    "name": "Bakery & Bread",
+    "slug": "bakery-bread",
+    "type": "department"
+  },
+  {
+    "name": "Beverages",
+    "slug": "beverages",
+    "type": "department"
+  },
+  {
+    "name": "Alcohol",
+    "slug": "alcohol",
+    "type": "department"
+  },
+  {
+    "name": "Pantry Essentials",
+    "slug": "pantry-essentials",
+    "type": "department"
+  },
+  {
+    "name": "Deli",
+    "slug": "deli",
+    "type": "department"
+  },
+  {
+    "name": "Household Essentials",
+    "slug": "household-essentials",
+    "type": "department"
+  },
+  {
+    "name": "Breakfast & Cereals",
+    "slug": "breakfast-cereals",
+    "type": "department"
+  },
+  {
+    "name": "Pet Supplies",
+    "slug": "pet-supplies",
+    "type": "department"
+  },
+  {
+    "name": "Personal Care",
+    "slug": "personal-care",
+    "type": "department"
+  },
+  {
+    "name": "Baby Items",
+    "slug": "baby-items",
+    "type": "department"
+  },
+  {
+    "name": "Recipes",
+    "slug": "recipes",
+    "type": "department"
+  },
+  {
+    "name": "ALDI Brands",
+    "slug": "aldi-brands",
+    "type": "department"
+  }
+]
