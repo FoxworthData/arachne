@@ -155,6 +155,64 @@ class WalmartHeaderBuilder(RetailerHeaderBuilder):
         return headers
 
 
+class WalmartCookieSeedingHeaderBuilder(WalmartHeaderBuilder):
+    """Header builder that produces Walmart's seeding-phase headers and cookies.
+
+    Used as the input to WalmartCookieSeeder. Exposes:
+        - initial_headers: modern Chrome header set including Client Hints and
+          Fetch Metadata, pinned to a BrowserPersona.
+        - initial_cookies: dict of location-style cookies parsed out of
+          self.location_cookie() (the inherited builder), plus a few flags
+          the seeding GET expects.
+
+    Note: assortmentStoreId in initial_cookies is read from self.store_id while
+    the rest are parsed from location_cookie() output. Two sources of truth
+    for store identity here. Acceptable for now; flagged in
+    docs/walmart-cookie-seeding-port-plan.md as a follow-up.
+    """
+
+    def __init__(self, store_identification: dict, browser_persona: BrowserPersona):
+        super().__init__(store_identification=store_identification)
+        self.browser_persona = browser_persona
+
+        self.initial_headers = {
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'accept-language': 'en-US,en;q=0.9',
+            'cache-control': 'no-cache',
+            'pragma': 'no-cache',
+            'priority': 'u=0, i',
+            'sec-ch-ua': self.browser_persona.sec_ch_ua,
+            'sec-ch-ua-mobile': self.browser_persona.sec_ch_ua_mobile,
+            'sec-ch-ua-platform': self.browser_persona.sec_ch_ua_platform,
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'none',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1',
+            'user-agent': self.browser_persona.user_agent,
+        }
+
+        # Parse location_cookie() output into a dict so we can pull individual
+        # cookies by name into initial_cookies.
+        location_cookie_str = self.location_cookie()
+        location_cookie_dict = {}
+        for pair in location_cookie_str.split('; '):
+            if '=' in pair:
+                name, value = pair.split('=', 1)
+                location_cookie_dict[name] = value
+
+        self.initial_cookies = {
+            'hasACID': 'true',
+            'adblocked': 'false',
+            'hasLocData': '1',
+            'ACID': location_cookie_dict['ACID'],
+            'locGuestData': location_cookie_dict['locGuestData'],
+            'locDataV3': location_cookie_dict['locDataV3'],
+            # TODO: unify store_id source with location_cookie output
+            'assortmentStoreId': self.store_id,
+        }
+
+
 class FashionphileHeaderBuilder(RetailerHeaderBuilder):
     def __init__(self, store_identification: dict):
         self.store_id = store_identification['store_id']
