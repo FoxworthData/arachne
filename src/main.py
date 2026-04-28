@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 
 from src.dispatch import dispatch_fetch_type
 from src.run_config import RunConfig
+from src.utils.aldi_store_util import load_aldi_store_by_location_code
 from src.utils.retailer_factory import build_scrape_strategy
 from src.utils.setup_config_logging import setup_config_logging
 from src.utils.yaml_util import load_store_by_id
@@ -39,13 +40,30 @@ app_env = os.getenv("APP_ENV", "development")
 # Personae can be customized to simulate different browser environments;
 # the strategy's session seeding pins to whatever is configured here.
 
-DEFAULT_RETAILER: Final[str] = "Walmart"
-DEFAULT_STORE_ID: Final[str] = "1198"
-DEFAULT_FETCH_TYPE: Final[str] = "search"
+# DEFAULT_RETAILER: Final[str] = "Walmart"
+# DEFAULT_STORE_ID: Final[str] = "1198"
+# DEFAULT_FETCH_TYPE: Final[str] = "search"
+# DEFAULT_QUERY: Final[str] = "milk"
+
+DEFAULT_RETAILER: Final[str] = "Aldi"
+DEFAULT_STORE_ID: Final[str] = "444-089"
+DEFAULT_FETCH_TYPE: Final[str] = "product"
 DEFAULT_QUERY: Final[str] = "milk"
 
 DEFAULT_PERSONA_OS_NAME: Final[str] = "Windows"
 DEFAULT_PERSONA_BROWSER_NAME: Final[str] = "Chrome"
+
+
+def _resolve_store_identification(config: RunConfig) -> dict:
+    """Pick the right store loader for the configured retailer.
+
+    The orchestration layer has to do this *before* the strategy exists,
+    because the strategy constructor takes store_identification. This is
+    the only retailer-aware branch in main.py.
+    """
+    if config.retailer == "Aldi":
+        return load_aldi_store_by_location_code(location_code=config.store_id)
+    return load_store_by_id(store_id=config.store_id)
 
 
 async def main() -> None:
@@ -62,7 +80,7 @@ async def main() -> None:
         persona_browser_name=DEFAULT_PERSONA_BROWSER_NAME,
     )
 
-    store_identification = load_store_by_id(store_id=config.store_id)
+    store_identification = _resolve_store_identification(config)
     logger.info(store_identification)
 
     # singleton=True for fetch types that don't paginate; the dispatcher's

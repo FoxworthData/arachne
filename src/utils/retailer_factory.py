@@ -8,6 +8,7 @@ elif branch here.
 from typing import Optional
 
 from src.utils.browser_personas import BrowserPersona, BrowserPersonaChooser
+from src.utils.strategies.aldi_scrape_strategy import AldiScrapeStrategy
 from src.utils.strategies.books_to_scrape_strategy import BooksToScrapeStrategy
 from src.utils.strategies.fashionphile_scrape_strategy import FashionphileScrapeStrategy
 from src.utils.strategies.scrape_strategy import RetailerScrapeStrategy
@@ -47,6 +48,16 @@ def build_scrape_strategy(
             logger=logger,
             singleton=singleton,
             browser_persona=browser_persona,
+        )
+    elif retailer == "Aldi":
+        return AldiScrapeStrategy(
+            store_identification=store_identification,
+            fetch_type=fetch_type,
+            fetch_query=fetch_query,
+            start_url=start_url,
+            project_config=project_config,
+            logger=logger,
+            singleton=singleton,
         )
     elif retailer == "Fashionphile":
         return FashionphileScrapeStrategy(
