@@ -26,6 +26,11 @@ from src.utils.proxy_builder_simple import get_proxies
 from src.utils.response_analyzers import walmart_response_analyzer
 from src.utils.strategies.aiohttp_scrape_strategy import AiohttpScrapeStrategy
 from src.utils.walmart_cookie_seeder import WalmartCookieSeeder
+from src.utils.yaml_util import (
+    get_random_products,
+    load_search_by_query,
+    load_store_directories_by_state,
+)
 
 
 class WalmartScrapeStrategy(AiohttpScrapeStrategy):
@@ -145,3 +150,81 @@ class WalmartScrapeStrategy(AiohttpScrapeStrategy):
     async def fetch_singleton_urls(self, urls: List[str]) -> None:
         await self._ensure_seeded()
         await super().fetch_singleton_urls(urls)
+
+    # ── High-level run_* entry points ────────────────────────────────────────
+
+    async def run_search(self, query: str) -> None:
+        """Resolve query against the Walmart search YAML, then drive fetch_all.
+
+        The YAML stores canonical search URLs by query name. After resolving,
+        this method updates the strategy's bookkeeping fields (fetch_query,
+        start_url) so the FetcherSession summary reflects what actually ran.
+        """
+        search_config = load_search_by_query(query=query)
+        self.logger.info(search_config)
+
+        resolved_query = search_config.get('query')
+        first_page_search_url = search_config.get('search_url')
+
+        # Update bookkeeping so session summary reflects the resolved targets.
+        self.fetch_query = resolved_query
+        self.start_url = first_page_search_url
+        self.session.fetch_query = resolved_query
+        self.session.url = first_page_search_url
+
+        self.logger.info(
+            f"Retailer: {self.retailer} Store: {self.store_identification['store_id']} "
+            f"Fetch Type: {self.fetch_type} Query: {resolved_query}"
+        )
+        await self.fetch_all(first_page_search_url)
+
+    async def run_product_lookup(self) -> None:
+        """Pick a random sample of canonical product URLs and fetch them.
+
+        Targets come from the Walmart_products.yaml fixture. Sampling rather
+        than walking the full list keeps demo runs short.
+        """
+        random_entries = get_random_products(n=100)
+        urls = [entry.get('canonical_url') for entry in random_entries]
+
+        self.logger.info(
+            f"Retailer: {self.retailer} Store: {self.store_identification['store_id']} "
+            f"Fetch Type: {self.fetch_type} Sample size: {len(urls)}"
+        )
+        await self.fetch_singleton_urls(urls)
+
+    async def run_store_directory(self, query: str) -> None:
+        """Fetch a single Walmart store-directory page for query (a state code)."""
+        url = f"https://www.walmart.com/store-directory/{query.lower()}"
+
+        self.fetch_query = query
+        self.start_url = url
+        self.session.fetch_query = query
+        self.session.url = url
+
+        self.logger.info(
+            f"Retailer: {self.retailer} Store: {self.store_identification['store_id']} "
+            f"Fetch Type: {self.fetch_type} Query: {query}"
+        )
+        await self.fetch_singleton_urls([url])
+
+    async def run_store_directory_by_state(self, state_code: str) -> None:
+        """Fetch every per-city store directory for the given state code.
+
+        The YAML lookup returns a list of city dicts with `url` fields; this
+        method collapses them into a single fetch_singleton_urls call so the
+        strategy seeds cookies once and shares the session across all cities.
+        """
+        city_entries = load_store_directories_by_state(state_code)
+        city_urls = [entry.get('url') for entry in city_entries if entry.get('url')]
+
+        self.fetch_query = state_code
+        self.start_url = None
+        self.session.fetch_query = state_code
+
+        self.logger.info(
+            f"Retailer: {self.retailer} Store: {self.store_identification['store_id']} "
+            f"Fetch Type: {self.fetch_type} State: {state_code} "
+            f"Cities: {len(city_urls)}"
+        )
+        await self.fetch_singleton_urls(city_urls)

@@ -36,3 +36,24 @@ class BooksToScrapeStrategy(AiohttpScrapeStrategy):
 
     def get_proxy(self) -> str:
         return ""
+
+    # ── High-level run_* entry points (aspirational stubs) ────────────────────────
+    #
+    # books.toscrape.com is the smallest example in the codebase and a
+    # natural place to demonstrate run_search / run_product_lookup once
+    # someone wires up category lookups against the site's URL scheme.
+    # The pattern to follow is in WalmartScrapeStrategy.
+
+    async def run_search(self, query: str) -> None:
+        raise NotImplementedError(
+            "BooksToScrapeStrategy.run_search is not yet implemented. "
+            "Define how a category name resolves to a books.toscrape.com URL "
+            "(see WalmartScrapeStrategy.run_search for the pattern)."
+        )
+
+    async def run_product_lookup(self) -> None:
+        raise NotImplementedError(
+            "BooksToScrapeStrategy.run_product_lookup is not yet implemented. "
+            "Define where the candidate product URL list comes from "
+            "(see WalmartScrapeStrategy.run_product_lookup for the pattern)."
+        )
