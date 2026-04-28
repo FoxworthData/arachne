@@ -3,7 +3,7 @@ import os
 
 from dotenv import load_dotenv
 
-from src.utils.retailer_factory import build_retailer_bundle
+from src.utils.retailer_factory import build_scrape_strategy
 from src.utils.setup_config_logging import setup_config_logging
 from src.utils.yaml_util import load_store_by_id, load_search_by_query, get_random_products, \
     load_store_directories_by_state
@@ -31,7 +31,7 @@ async def main():
     store_id = '1198'
 
     fetch_type = 'search'
-    query = 'cookies'
+    query = 'milk'
 
     # fetch_type = 'store-directory'
     # fetch_type = 'product'
@@ -49,7 +49,7 @@ async def main():
         query = search.get('query')
         first_page_search_url = search.get('search_url')
 
-        bundle = build_retailer_bundle(
+        strategy = build_scrape_strategy(
             retailer=retailer,
             store_identification=store_identification,
             fetch_type=fetch_type,
@@ -59,7 +59,7 @@ async def main():
             logger=logger
         )
 
-        results = await bundle.fetcher.fetch_all(first_page_search_url, bundle.handle_result)
+        results = await strategy.fetch_all(first_page_search_url)
 
     elif fetch_type == 'product':
         query = fetch_type
@@ -70,7 +70,7 @@ async def main():
         for entry in random_entries:
             urls.append(entry.get('canonical_url'))
 
-        bundle = build_retailer_bundle(
+        strategy = build_scrape_strategy(
             retailer=retailer,
             store_identification=store_identification,
             fetch_type=fetch_type,
@@ -81,7 +81,7 @@ async def main():
             singleton=True
         )
 
-        results = await bundle.fetcher.fetch_singleton_urls(urls, bundle.handle_result)
+        results = await strategy.fetch_singleton_urls(urls)
 
     elif fetch_type == 'store-directory':
 
@@ -89,7 +89,7 @@ async def main():
 
         url = f"https://www.walmart.com/store-directory/{query.lower()}"
 
-        bundle = build_retailer_bundle(
+        strategy = build_scrape_strategy(
             retailer=retailer,
             store_identification=store_identification,
             fetch_type=fetch_type,
@@ -100,7 +100,7 @@ async def main():
             singleton=True
         )
 
-        results = await bundle.fetcher.fetch_singleton_urls([url], bundle.handle_result)
+        results = await strategy.fetch_singleton_urls([url])
 
     elif fetch_type == 'store-directory-by-state':
 
@@ -117,7 +117,7 @@ async def main():
 
             city_query = f"{query} {city}"
 
-            bundle = build_retailer_bundle(
+            strategy = build_scrape_strategy(
                 retailer=retailer,
                 store_identification=store_identification,
                 fetch_type=fetch_type,
@@ -128,11 +128,11 @@ async def main():
                 singleton=True
             )
 
-            results = await bundle.fetcher.fetch_singleton_urls([city_url_value], bundle.handle_result)
-            logger.info(bundle.get_session_summary())
+            results = await strategy.fetch_singleton_urls([city_url_value])
+            logger.info(strategy.get_session_summary())
 
 
-    logger.info(bundle.get_session_summary())
+    logger.info(strategy.get_session_summary())
 
 if __name__ == "__main__":
     asyncio.run(main())
