@@ -36,3 +36,8 @@ env_save.txt
 .mcp.json
 .claude/settings.local.json
 .claude/sessions/
+
+# HAR captures contain raw HTTP request/response pairs from real browser
+# sessions and may include cookies, tokens, and other session data. Keep
+# them out of version control; re-capture as needed.
+*.har
