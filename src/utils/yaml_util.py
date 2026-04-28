@@ -2,9 +2,11 @@ import random
 
 import yaml
 
+from src.utils.paths import DATA_DIR
 
 
-def load_store_directories_by_state(state_code: str, yaml_file: str = '../data/Walmart_store_directories_by_state_retry.yaml') -> dict:
+def load_store_directories_by_state(state_code: str, yaml_file: str = None) -> dict:
+    yaml_file = yaml_file or str(DATA_DIR / 'Walmart_store_directories_by_state_retry.yaml')
     with open(yaml_file, 'r') as file:
         state_directories = yaml.safe_load(file)
 
@@ -20,7 +22,8 @@ def load_store_directories_by_state(state_code: str, yaml_file: str = '../data/W
 
 
 
-def load_store_by_id(store_id: str, yaml_file: str = '../data/Walmart_stores.yaml') -> dict:
+def load_store_by_id(store_id: str, yaml_file: str = None) -> dict:
+    yaml_file = yaml_file or str(DATA_DIR / 'Walmart_stores.yaml')
     with open(yaml_file, 'r') as file:
         stores = yaml.safe_load(file)
 
@@ -31,7 +34,8 @@ def load_store_by_id(store_id: str, yaml_file: str = '../data/Walmart_stores.yam
     raise ValueError(f"Store with store_id {store_id} not found.")
 
 
-def load_search_by_query(query: str, yaml_file: str = '../data/Walmart_fetch_search.yaml') -> dict:
+def load_search_by_query(query: str, yaml_file: str = None) -> dict:
+    yaml_file = yaml_file or str(DATA_DIR / 'Walmart_fetch_search.yaml')
     query_lower = query.lower()
 
     with open(yaml_file, 'r') as file:
@@ -44,7 +48,7 @@ def load_search_by_query(query: str, yaml_file: str = '../data/Walmart_fetch_sea
     raise ValueError(f"Search with query '{query}' not found.")
 
 
-def get_random_products(yaml_file: str = '../data/Walmart_products.yaml', n: int = 10) -> list:
+def get_random_products(yaml_file: str = None, n: int = 10) -> list:
     """
     Load a YAML file and return `n` random entries.
 
@@ -55,6 +59,7 @@ def get_random_products(yaml_file: str = '../data/Walmart_products.yaml', n: int
     Returns:
         list: List of random entries.
     """
+    yaml_file = yaml_file or str(DATA_DIR / 'Walmart_products.yaml')
     with open(yaml_file, 'r') as f:
         entries = yaml.safe_load(f)
 
